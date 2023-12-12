@@ -1,0 +1,22 @@
+{
+  "Token": {
+    "address": "0xFEcD5DA766B86588A77d05F9197447a6e5c02795"
+  },
+  "TokenProxy": {
+    "address": "0xCA171c4A2b1d167e817B19AD432Ad86cF8D07B7f",
+    "initialized": true
+  },
+  "Masset": {
+    "address": "0xCED7E3Ff8DFa03441312B4e3BDf6F93Ff80cf514"
+  },
+  "MassetProxy": {
+    "address": "0x0AB235D6b5f2D256db13cea5Dc545081cCA30a27",
+    "initialized": true
+  },
+  "BasketManager": {
+    "address": "0x6D1B85c6D4554E88513BA219EC32710820c5f91E"
+  },
+  "Migrations": {
+    "address": "0x459F869179567a8fF98C60a1eD63384bfb4A6A61"
+  }
+}

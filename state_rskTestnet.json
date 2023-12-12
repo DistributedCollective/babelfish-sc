@@ -1,0 +1,40 @@
+{
+  "Migrations": {
+    "address": "0xB7f02284C45A46947ecEcdF834C871C45b570e63"
+  },
+  "Token": {
+    "address": "0xa9262CC3fB54Ea55B1B0af00EfCa9416B8d59570",
+    "initialized": true
+  },
+  "MassetProxy": {
+    "address": "0x1572D7E4a78A8AD14AE722E6fE5f5600a2c7A149",
+    "initialized": true
+  },
+  "BasketManager": {
+    "address": "0xbD1DE2477737082eA605620acaa8B69da904cDdd"
+  },
+  "MockToken": {
+    "address": "0x0188F7676eC4956aDbEa415D38ce7Af45d4721bd"
+  },
+  "PauseManager": {
+    "address": "0xa40A902AC369891344E3e33CC06BEF9918712bCB"
+  },
+  "Masset": {
+    "address": "0x2b0e6E30B583C71dDAe63E00677E66A1Bef51b73"
+  },
+  "StakingProxy": {
+    "address": "0x786CD2E46fFa407114cCDb78b57F9fbe3b83Cd24"
+  },
+  "MultiSigWallet": {
+    "address": "0x1d401aED4E6Aa9E16c242Edb3223A55c575d4F38"
+  },
+  "TestOwnable": {
+    "address": "0xe3946CCE047658262cC06E46940A0F76F467DE40"
+  },
+  "RewardManager": {
+    "address": "0xfcf938f0e239ed366ffbfdcfe4124372df85ba9b"
+  },
+  "BonusManager": {
+    "address": "0x89eccbff11a2230a67e5b61314b80e59e3b169d6"
+  }
+}
