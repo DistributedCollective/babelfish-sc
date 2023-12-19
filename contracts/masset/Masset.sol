@@ -575,6 +575,9 @@ contract Masset is IMasset, IERC777Recipient, InitializableOwnable, Initializabl
         require(Address.isContract(_tokenA), "_tokenA not a contract");
         require(Address.isContract(_tokenB), "_tokenB not a contract");
 
+        require(basketManager.isValidBasset(_tokenA), "invalid basset _tokenA");
+        require(basketManager.isValidBasset(_tokenB), "invalid basset _tokenB");
+
         bool result = IERC20(_tokenA).transferFrom(msg.sender, address(this), _amount);
         require(result, "transfer 1 failed");
         result = IERC20(_tokenB).transfer(msg.sender, _amount);
