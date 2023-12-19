@@ -60,8 +60,7 @@ interface IRewardManager {
     /** admin methods **/
 
     /// @notice Send all XUSD funds from this contract to the current reward manager
-    /// !!! anybody can call this method !!!
-    function sendFundsToCurrent() external;
+    function sendFundsToCurrentRM() external;
 
     /**  Incentive methods **/
 

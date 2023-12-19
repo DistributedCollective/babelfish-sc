@@ -153,8 +153,10 @@ contract RewardManager is IRewardManager, Ownable {
     }
 
     /// @notice Send all XUSD funds from this contract to the current reward manager
-    /// !!! anybody can call this method !!!
-    function sendFundsToCurrent() public {
+    /// Only Masset can call
+    function sendFundsToCurrentRM() public {
+        require(msg.sender == address(masset), "not allowed");
+
         address currentRMAddress = masset.getRewardManager();
         if(currentRMAddress == address(this)) {
             return;

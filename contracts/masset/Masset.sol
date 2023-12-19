@@ -109,6 +109,10 @@ contract Masset is IMasset, IERC777Recipient, InitializableOwnable, Initializabl
         version = "1.0";
     }
 
+    function compareStrings(string memory stra, string memory strb) public pure returns (bool) {
+        return keccak256(bytes(stra)) == keccak256(bytes(strb));
+    }
+
     /**
     * Internal incentive functions
     **/
@@ -529,10 +533,22 @@ contract Masset is IMasset, IERC777Recipient, InitializableOwnable, Initializabl
 
     function setRewardManager(address _newRewardManager) public onlyOwner {
         
-        require(_newRewardManager == address(0) || Address.isContract(_newRewardManager), "not a contract");
+        require(_newRewardManager != address(rewardManager), "same address");
+        require(Address.isContract(_newRewardManager), "not a contract");
+        IRewardManager newRewardManager = IRewardManager(_newRewardManager);
+
+        // can't accept a RM that doesn't have me as the masset
+        require(newRewardManager.getMassetAddress() == address(this), "invalid masset in RM");
+
+        // let's do the twist
         IRewardManager oldRewardManager = rewardManager;
-        rewardManager = IRewardManager(_newRewardManager);
-        rewardManager.sendFundsToCurrent();
+        rewardManager = newRewardManager;
+
+        // version 3.0 didn't have this method
+        if(!compareStrings(oldRewardManager.getVersion(), "3.0")) {
+            // send all the funds from the old RM to the new one
+            oldRewardManager.sendFundsToCurrentRM();
+        }
         emit onSetRewardManager(msg.sender, address(oldRewardManager), _newRewardManager);
     }
 
@@ -549,11 +565,9 @@ contract Masset is IMasset, IERC777Recipient, InitializableOwnable, Initializabl
 
     // Temporary migration code
 
-    function compareStrings(string memory stra, string memory strb) public pure returns (bool) {
-        return keccak256(bytes(stra)) == keccak256(bytes(strb));
-    }
-
-    function migrateToV5(address _newBasketManager, address _newRewardManager) public onlyOwner {
+    function migrateToV6(address _newBasketManager, address _newRewardManager) public onlyOwner {
+        
+        // make sure we have the correct version here
         require(compareStrings(version, "5.0") ||
             compareStrings(version, "5.1") ||
             compareStrings(version, "5.2"), "wrong version");
