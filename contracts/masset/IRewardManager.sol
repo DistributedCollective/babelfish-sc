@@ -3,6 +3,12 @@ pragma solidity ^0.5.17;
 
 interface IRewardManager {
 
+    /** Getters **/
+
+    /// @notice Get the version
+    /// @return version
+    function getVersion() external pure returns (string memory);
+
     /// @notice Get the factor
     /// @return factor the factor
     function getFactor() external view returns (uint256);
@@ -22,6 +28,13 @@ interface IRewardManager {
     /// @notice Get the masset contract
     /// @return massetAddress the masset address
     function getMassetAddress() external view returns (address);
+
+    /// @notice Get the global max penalty in percentage
+    /// @return the maximum
+    function getGlobalMaxPenaltyPerc() external view returns (uint256);
+    /// @notice Get the global max reward in percentage
+    /// @return the maximum
+    function getGlobalMaxRewardPerc() external view returns (uint256);
 
     /** Setters **/
 
@@ -43,6 +56,12 @@ interface IRewardManager {
     function setTargetWeights(
         address[] calldata _tokenAddresses, 
         uint256[] calldata _targetWeights) external;
+
+    /** admin methods **/
+
+    /// @notice Send all XUSD funds from this contract to the current reward manager
+    /// !!! anybody can call this method !!!
+    function sendFundsToCurrent() external;
 
     /**  Incentive methods **/
 
@@ -74,6 +93,4 @@ interface IRewardManager {
         address _recipient,
         bool _bridgeMode
         ) external returns (uint256);
-
-    function getVersion() external pure returns (string memory);
 }

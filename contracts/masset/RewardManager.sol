@@ -5,7 +5,6 @@ import { Ownable } from "../openzeppelin/contracts/ownership/Ownable.sol";
 import { SafeMath } from "../openzeppelin/contracts/math/SafeMath.sol";
 import { IERC20 } from "../openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Address } from "../openzeppelin/contracts/utils/Address.sol";
-import { IBasketManager } from "./IBasketManager.sol";
 import { IRewardManager } from "./IRewardManager.sol";
 import { IMasset } from "./IMasset.sol";
 import { MappingAddressToUint256 } from "../helpers/MappingAddressToUint256.sol";
@@ -16,7 +15,7 @@ contract RewardManager is IRewardManager, Ownable {
 
     using SafeMath for uint256;
     uint256 constant ONE = 1000000000000000000;
-    uint256 constant MIN_REWARD = ONE / 1000000;
+    uint256 constant DUST_LIMIT = ONE / 1000000;
 
     /** State **/
 
@@ -41,53 +40,61 @@ contract RewardManager is IRewardManager, Ownable {
     constructor(address _massetAddress) public {
         require(Address.isContract(_massetAddress), "_massetAddress not a contract");
         masset = IMasset(_massetAddress);
+        address _previous = masset.getRewardManager();
+        if(_previous != address(0)) {
+            IRewardManager previous = IRewardManager(_previous);
+            setFactor(previous.getFactor());
+            setGlobalMaxRewardPerc(previous.getGlobalMaxRewardPerc());
+            setGlobalMaxPenaltyPerc(previous.getGlobalMaxPenaltyPerc());
+            setTargetWeights(previous.getTokens(), previous.getTargetWeights());
+        }
     }
 
     /** Getters **/
 
-    function getVersion() external pure returns (string memory) {
-        return "3.0";
+    function getVersion() public pure returns (string memory) {
+        return "4.0";
     }
 
     /// @notice Get the factor
     /// @return factor the factor
-    function getFactor() external view returns (uint256) {
+    function getFactor() public view returns (uint256) {
         return factor;
     }
 
     /// @notice Get the list of tokens
     /// @return tokens the tokens
-    function getTokens() external view returns (address[] memory) {
+    function getTokens() public view returns (address[] memory) {
         return targetWeights.getKeys();
     }
 
     /// @notice Get the target weight for a token
     /// @return targetWeight the target weight
-    function getTargetWeight(address _tokenAddress) external view returns (uint256) {
+    function getTargetWeight(address _tokenAddress) public view returns (uint256) {
         return targetWeights.get(_tokenAddress);
     }
 
     /// @notice Get the target weights for all tokens
     /// @return targetWeights the target weights
-    function getTargetWeights() external view returns (uint256[] memory) {
+    function getTargetWeights() public view returns (uint256[] memory) {
         return targetWeights.getValues();
     }
 
     /// @notice Get the masset contract
     /// @return massetAddress the masset address
-    function getMassetAddress() external view returns (address) {
+    function getMassetAddress() public view returns (address) {
         return address(masset);
     }
 
     /// @notice Get the global max penalty in percentage
     /// @return the maximum
-    function getGlobalMaxPenaltyPerc() external view returns (uint256) {
+    function getGlobalMaxPenaltyPerc() public view returns (uint256) {
         return globalMaxPenaltyPerc;
     }
 
     /// @notice Get the global max reward in percentage
     /// @return the maximum
-    function getGlobalMaxRewardPerc() external view returns (uint256) {
+    function getGlobalMaxRewardPerc() public view returns (uint256) {
         return globalMaxRewardPerc;
     }
 
@@ -95,14 +102,14 @@ contract RewardManager is IRewardManager, Ownable {
 
     /// @notice Set the factor
     /// @param _factor the factor
-    function setFactor(uint256 _factor) external onlyOwner {
+    function setFactor(uint256 _factor) public onlyOwner {
         factor = _factor;
         emit onFactorChanged(msg.sender, _factor);
     }
 
     /// @notice Set the global max penalty in percentage
     /// @param _max the maximum
-    function setGlobalMaxPenaltyPerc(uint256 _max) external onlyOwner {
+    function setGlobalMaxPenaltyPerc(uint256 _max) public onlyOwner {
         require(_max <= 100 * ONE, "_max must be <= 100");
         globalMaxPenaltyPerc = _max;
         emit onGlobalMaxPenaltyChanged(msg.sender, _max);
@@ -110,7 +117,7 @@ contract RewardManager is IRewardManager, Ownable {
 
     /// @notice Set the global max reward in percentage
     /// @param _max the maximum
-    function setGlobalMaxRewardPerc(uint256 _max) external onlyOwner {
+    function setGlobalMaxRewardPerc(uint256 _max) public onlyOwner {
         require(_max <= 100 * ONE, "_max must be <= 100");
         globalMaxRewardPerc = _max;
         emit onGlobalMaxRewardChanged(msg.sender, _max);
@@ -120,12 +127,13 @@ contract RewardManager is IRewardManager, Ownable {
     /// @param _tokenAddresses the token addresses
     /// @param _targetWeights the target weights
     function setTargetWeights(
-        address[] calldata _tokenAddresses, 
-        uint256[] calldata _targetWeights) external onlyOwner {
+        address[] memory _tokenAddresses, 
+        uint256[] memory _targetWeights) public onlyOwner {
 
         require(_tokenAddresses.length == _targetWeights.length, "arrays not same length");
         targetWeights = new MappingAddressToUint256();
         uint256 total = 0;
+
         for(uint i=0; i<_tokenAddresses.length; i++) {
             require(Address.isContract(_tokenAddresses[i]), "token address not a contract");
             total = total.add(_targetWeights[i]);
@@ -137,13 +145,26 @@ contract RewardManager is IRewardManager, Ownable {
 
     /// @notice Send funds from this contract. Only Owner can call.
     /// @param _tokenAddress the token address
-    /// @param _recipient the recipient of thw funds
     /// @param _amount the amount to send
-    function sendFunds(address _tokenAddress, address _recipient, uint256 _amount) external onlyOwner {
+    function extractFunds(address _tokenAddress, uint256 _amount) public onlyOwner {
         require(_tokenAddress != address(0x00), "invalid token address");
-        require(_recipient != address(0x00), "invalid recipient");
-        bool result = IERC20(_tokenAddress).transfer(_recipient, _amount);
+        bool result = IERC20(_tokenAddress).transfer(msg.sender, _amount);
         require(result, "transfer failed");
+    }
+
+    /// @notice Send all XUSD funds from this contract to the current reward manager
+    /// !!! anybody can call this method !!!
+    function sendFundsToCurrent() public {
+        address currentRMAddress = masset.getRewardManager();
+        if(currentRMAddress == address(this)) {
+            return;
+        }
+        address tokenAddress = masset.getToken();
+        uint256 balance = IERC20(tokenAddress).balanceOf(address(this));
+        if(balance >= DUST_LIMIT) {
+            bool result = IERC20(tokenAddress).transfer(currentRMAddress, balance);
+            require(result, "transfer failed");
+        }
     }
 
     /**  Incentive methods **/
@@ -164,6 +185,17 @@ contract RewardManager is IRewardManager, Ownable {
         return d.mul(d).div(ONE);
     }
 
+    function getBalanceInMasset(address _bassetAddress) public view returns (uint256) {
+        return IERC20(_bassetAddress).balanceOf(address(masset));
+    }
+
+    function getTotalBalanceInMasset() public view returns(uint256 total) {
+        address[] memory bassets = targetWeights.getKeys();
+        for(uint i = 0; i < bassets.length; i++) {
+            total += getBalanceInMasset(bassets[i]);
+        }
+    } 
+
     /// @notice Get the average distance squared
     /// @param _basset the token address
     /// @param _sum the amount to withdraw or deposit
@@ -174,14 +206,13 @@ contract RewardManager is IRewardManager, Ownable {
 
         require(_sum != 0, "zero sum");
 
-        IBasketManager basketManager = IBasketManager(masset.getBasketManager());
-        uint256 totalBefore = basketManager.getTotalBalanceInMasset(address(masset));
+        uint256 totalBefore = getTotalBalanceInMasset();
         uint256 totalAfter = _addOrSub(totalBefore, _sum);
         address[] memory tokens = targetWeights.getKeys();
 
         for(uint i=0; i<tokens.length; i++) {
             address tokenAddress = tokens[i];
-            uint256 balanceBefore = basketManager.getBalanceInMasset(address(masset), tokenAddress);
+            uint256 balanceBefore = getBalanceInMasset(tokenAddress);
             uint256 targetWeight = targetWeights.get(tokenAddress);
             uint256 weightBefore = getWeight(balanceBefore, totalBefore);
             uint256 balanceAfter = tokenAddress == _basset ? _addOrSub(balanceBefore, _sum) : balanceBefore;
@@ -204,14 +235,13 @@ contract RewardManager is IRewardManager, Ownable {
 
         require(_sum > 0, "invalid sum");
 
-        IBasketManager basketManager = IBasketManager(masset.getBasketManager());
-        uint256 totalAfter = basketManager.getTotalBalanceInMasset(address(masset));
+        uint256 totalAfter = getTotalBalanceInMasset();
         uint256 totalBefore = totalAfter.sub(_sum);
         address[] memory tokens = targetWeights.getKeys();
 
         for(uint i=0; i<tokens.length; i++) {
             address tokenAddress = tokens[i];
-            uint256 balanceBefore = basketManager.getBalanceInMasset(address(masset), tokenAddress);
+            uint256 balanceBefore = getBalanceInMasset(tokenAddress);
             uint256 balanceAfter = balanceBefore;
             if(tokenAddress == _basset) {
                 balanceBefore = balanceBefore.sub(_sum);
@@ -236,10 +266,9 @@ contract RewardManager is IRewardManager, Ownable {
             uint256 _sum,
             bool _bridgeMode
         ) public view returns (bool) {
-        IBasketManager basketManager = IBasketManager(masset.getBasketManager());
         uint256 targetWeight = targetWeights.get(_bassetAddress);
-        uint256 balance = basketManager.getBalanceInMasset(address(masset), _bassetAddress);
-        uint256 totalBalance = basketManager.getTotalBalanceInMasset(address(masset));
+        uint256 balance = getBalanceInMasset(_bassetAddress);
+        uint256 totalBalance = getTotalBalanceInMasset();
         if(!_bridgeMode) {
             balance = balance.add(_sum);
             totalBalance = totalBalance.add(_sum);
@@ -287,7 +316,7 @@ contract RewardManager is IRewardManager, Ownable {
 
         uint256 globalMax = _sum.mul(globalMaxRewardPerc.div(100)).div(ONE);
         reward = reward < globalMax ? reward : globalMax;
-        reward = reward >= MIN_REWARD ? reward : 0; 
+        reward = reward >= DUST_LIMIT ? reward : 0; 
 
         return reward;
     }
@@ -335,7 +364,7 @@ contract RewardManager is IRewardManager, Ownable {
         require(msg.sender == address(masset), "only masset may call");
 
         uint256 reward = this.getRewardForDeposit(_bassetAddress, _sum, _bridgeMode);
-        if(reward >= MIN_REWARD) {
+        if(reward >= DUST_LIMIT) {
             IERC20 massetToken = IERC20(masset.getToken());
             require(massetToken.transfer(_recipient, reward), "transfer failed");
         }
