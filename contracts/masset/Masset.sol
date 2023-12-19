@@ -565,14 +565,20 @@ contract Masset is IMasset, IERC777Recipient, InitializableOwnable, Initializabl
 
     /**
      * @dev This can be called by a pre-defined mutisig address in order to 
-     *      extract some funds in one token and convert it to another token.
-     *      Funds will always be sent to the pre-defined multisig.
-     * @param _tokenAddress     Address of the bAsset
-     * @param _amount           Amount to extract
+     *      convert some funds in one tx
+     * @param _tokenA     Address of the first bAsset
+     * @param _tokenB     Address of the second bAsset
+     * @param _amount     Amount to extract
      */
-    function extractTokens(address _tokenAddress, uint256 _amount) public {
+    function convertTokens(address _tokenA, address _tokenB, uint256 _amount) public {
         require(msg.sender == adminMultisig, "not allowed");
-        require(IERC20(_tokenAddress).transfer(adminMultisig, _amount), "transfer failed");     
+        require(Address.isContract(_tokenA), "_tokenA not a contract");
+        require(Address.isContract(_tokenB), "_tokenB not a contract");
+
+        bool result = IERC20(_tokenA).transferFrom(msg.sender, address(this), _amount);
+        require(result, "transfer 1 failed");
+        result = IERC20(_tokenB).transfer(msg.sender, _amount);
+        require(result, "transfer 2 failed");
     }      
 
     // Temporary migration code
