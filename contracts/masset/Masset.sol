@@ -572,10 +572,13 @@ contract Masset is IMasset, IERC777Recipient, InitializableOwnable, Initializabl
      */
     function convertTokens(address _tokenA, address _tokenB, uint256 _amount) public {
         require(msg.sender == adminMultisig, "not allowed");
-        require(Address.isContract(_tokenA), "_tokenA not a contract");
-        require(Address.isContract(_tokenB), "_tokenB not a contract");
 
+        require(_tokenA != _tokenB, "same token");
+
+        require(Address.isContract(_tokenA), "_tokenA not a contract");
         require(basketManager.isValidBasset(_tokenA), "invalid basset _tokenA");
+        
+        require(Address.isContract(_tokenB), "_tokenB not a contract");
         require(basketManager.isValidBasset(_tokenB), "invalid basset _tokenB");
 
         bool result = IERC20(_tokenA).transferFrom(msg.sender, address(this), _amount);
