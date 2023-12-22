@@ -20,7 +20,7 @@ const ONEHALF = ONE.div(new BN('2'));
 const ONEMILLION = ONE.mul(new BN('1000000'));
 const TENMILLION = ONE.mul(new BN('10000000'));
 
-contract.only("BonusManager", async (accounts) => {
+contract("BonusManager", async (accounts) => {
     const sa = new StandardAccounts(accounts);
     const notOwner = sa.other;
 

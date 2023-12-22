@@ -40,7 +40,7 @@ contract("RewardManager", async (accounts) => {
     it("constructor", async () => {
         const newRewardManager = await RewardManager.new(address(masset));
         const version = await newRewardManager.getVersion();
-        expect(version).eq('2.0');
+        expect(version).eq('3.0');
     });
 
     describe("basic math", async () => {

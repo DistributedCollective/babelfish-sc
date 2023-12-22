@@ -91,24 +91,6 @@ contract("Masset", async (accounts) => {
                 oldAdminMultisig: ZERO_ADDRESS
             });
         });
-        it("extractTokens can only be called by the ms", async () => {
-            const ms = await MultiSigWallet.new(accounts, 2);
-            const fakeToken = await MockERC20.new("", "", 18, masset.address, 1000000);
-            await masset.setAdminMultisig(ms.address, { from: standardAccounts.governor });
-            await expectRevert(
-                masset.extractTokens(fakeToken.address, 1000000, { from: standardAccounts.governor }),
-                "not allowed");
-        });
-        it("extractTokens works", async () => {
-            const amount = '1000000';
-            const ms = await MultiSigWallet.new(accounts, 1);
-            const fakeToken = await MockERC20.new("", "", 18, masset.address, amount);
-            await masset.setAdminMultisig(ms.address, { from: standardAccounts.governor });
-            const abi = masset.contract.methods['extractTokens(address,uint256)'](fakeToken.address, amount).encodeABI();
-            await ms.submitTransaction(masset.address, 0, abi);
-            const balance = await fakeToken.balanceOf(ms.address);
-            expect(balance.toString()).to.eq(amount);
-        });
     });
 
     describe("mint", async () => {
@@ -246,6 +228,67 @@ contract("Masset", async (accounts) => {
                     masset.redeem(basketManagerObj.mockToken1.address, 100000));
             });
         });
+    });
+
+    describe("convertTokens", async () => {
+        let masset;
+        let basketManagerObj; 
+        let token;
+        let mockToken1, mockToken2;
+        let ms;
+        const testAmount = new BN('1000');
+
+        beforeEach(async () => {
+            masset = await Masset.new();
+            token = await createToken(masset);
+            basketManagerObj = await createBasketManager([20, 12], [100, -1000000], [1, 1], false);
+            await masset.initialize(basketManagerObj.basketManager.address, token.address, false);
+            mockToken1 = basketManagerObj.mockToken1;
+            mockToken2 = basketManagerObj.mockToken2;
+            await mockToken1.mint(standardAccounts.default, 1000000);
+            await mockToken2.mint(masset.address, 1000000);
+            ms = await MultiSigWallet.new([ standardAccounts.default ], 1);
+            await masset.setAdminMultisig(ms.address);
+        });
+
+        it("is only allowed for multisig address", async () => {
+            expectRevert.unspecified(masset.convertTokens(mockToken1.address, mockToken2.address, testAmount));
+        });
+
+        it("is only allowed for whitelisted addresses", async () => {
+            const abi = masset.contract.methods['convertTokens(address,address,uint256)'](mockToken1.address, mockToken2.address, testAmount).encodeABI();
+            expectRevert.unspecified(ms.submitTransaction(masset.address, 0, abi));
+        });
+
+        it("works as expected", async () => {
+
+            await mockToken1.transfer(ms.address, testAmount);
+
+            const balanceT1MassetBefore = await mockToken1.balanceOf(masset.address);
+            const balanceT2MassetBefore = await mockToken2.balanceOf(masset.address);
+            const balanceT1MsBefore = await mockToken1.balanceOf(ms.address);
+            const balanceT2MsBefore = await mockToken2.balanceOf(ms.address);
+
+            let abi = mockToken1.contract.methods['approve(address,uint256)'](masset.address, testAmount.toString()).encodeABI();
+            await ms.submitTransaction(mockToken1.address, 0, abi);
+
+            abi = masset.contract.methods['convertTokens(address,address,uint256)'](mockToken1.address, mockToken2.address, testAmount.toString()).encodeABI();
+            await ms.submitTransaction(masset.address, 0, abi);
+
+            const balanceT1MassetAfter = await mockToken1.balanceOf(masset.address);
+            const balanceT2MassetAfter = await mockToken2.balanceOf(masset.address);
+            const balanceT1MsAfter = await mockToken1.balanceOf(ms.address);
+            const balanceT2MsAfter = await mockToken2.balanceOf(ms.address);
+
+            // t1 sent to masset
+            expect(balanceT1MsBefore.sub(balanceT1MsAfter).toNumber()).eq(testAmount.toNumber());
+            expect(balanceT1MassetAfter.sub(balanceT1MassetBefore).toNumber()).eq(testAmount.toNumber());
+
+            // t2 received from masset
+            expect(balanceT2MsAfter.sub(balanceT2MsBefore).toNumber()).eq(testAmount.toNumber());
+            expect(balanceT2MassetBefore.sub(balanceT2MassetAfter).toNumber()).eq(testAmount.toNumber());
+        });
+
     });
 
     describe("precision conversion", async () => {
