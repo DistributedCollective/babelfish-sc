@@ -20,7 +20,7 @@ const ONEHALF = ONE.div(new BN('2'));
 const ONEMILLION = ONE.mul(new BN('1000000'));
 const TENMILLION = ONE.mul(new BN('10000000'));
 
-contract.only("BonusManager", async (accounts) => {
+contract("BonusManager", async (accounts) => {
     const sa = new StandardAccounts(accounts);
     const notOwner = sa.other;
 
@@ -39,7 +39,7 @@ contract.only("BonusManager", async (accounts) => {
         await bonusManager.setTokens(mockTokens);
         await mockMasset.setBonusManager(bonusManager.address);
 
-        mockRewardManager = await MockRewardManager.new();
+        mockRewardManager = await MockRewardManager.new(mockMasset.address);
         await mockMasset.setRewardManager(mockRewardManager.address);
 
         token = await MockERC20.new('XUSD', 'XUSD', 18, bonusManager.address, '1000000');

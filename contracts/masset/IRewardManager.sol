@@ -32,6 +32,7 @@ interface IRewardManager {
     /// @notice Get the global max penalty in percentage
     /// @return the maximum
     function getGlobalMaxPenaltyPerc() external view returns (uint256);
+    
     /// @notice Get the global max reward in percentage
     /// @return the maximum
     function getGlobalMaxRewardPerc() external view returns (uint256);

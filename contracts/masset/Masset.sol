@@ -545,7 +545,7 @@ contract Masset is IMasset, IERC777Recipient, InitializableOwnable, Initializabl
         rewardManager = newRewardManager;
 
         // version 3.0 didn't have this method
-        if(!compareStrings(oldRewardManager.getVersion(), "3.0")) {
+        if(address(oldRewardManager) != address(0) && !compareStrings(oldRewardManager.getVersion(), "3.0")) {
             // send all the funds from the old RM to the new one
             oldRewardManager.sendFundsToCurrentRM();
         }

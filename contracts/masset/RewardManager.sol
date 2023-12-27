@@ -36,13 +36,16 @@ contract RewardManager is IRewardManager, Ownable {
 
     /** External methods **/
 
-    /// @notice Constructor
-    constructor(address _massetAddress) public {
+    /// @notice Constructor Creates a new RewardManager with a given Masset and initializes it with the current RewardManager params
+    /// @param _massetAddress current masset
+    /// @param _copyCurrentParams whether to copy the params from the existing RM
+    constructor(address _massetAddress, bool _copyCurrentParams) public {
         require(Address.isContract(_massetAddress), "_massetAddress not a contract");
         masset = IMasset(_massetAddress);
         address _previous = masset.getRewardManager();
-        if(_previous != address(0)) {
-            IRewardManager previous = IRewardManager(_previous);
+        IRewardManager previous = IRewardManager(_previous);
+        if(_copyCurrentParams) {
+            require(_previous != address(0), "can't copy");
             setFactor(previous.getFactor());
             setGlobalMaxRewardPerc(previous.getGlobalMaxRewardPerc());
             setGlobalMaxPenaltyPerc(previous.getGlobalMaxPenaltyPerc());
@@ -194,7 +197,7 @@ contract RewardManager is IRewardManager, Ownable {
     function getTotalBalanceInMasset() public view returns(uint256 total) {
         address[] memory bassets = targetWeights.getKeys();
         for(uint i = 0; i < bassets.length; i++) {
-            total += getBalanceInMasset(bassets[i]);
+            total = total.add(getBalanceInMasset(bassets[i]));
         }
     } 
 
