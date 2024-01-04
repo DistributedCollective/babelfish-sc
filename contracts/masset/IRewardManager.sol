@@ -30,7 +30,7 @@ interface IRewardManager {
     function getMassetAddress() external view returns (address);
 
     /// @notice Get the global max penalty in percentage
-    /// @return the maximum
+    /// @return the maximum penalty percentage
     function getGlobalMaxPenaltyPerc() external view returns (uint256);
     
     /// @notice Get the global max reward in percentage
