@@ -30,7 +30,7 @@ contract("Masset", async (accounts) => {
         let token;
         beforeEach(async () => {
             masset = await Masset.new();
-            basketManagerObj = await createBasketManager([18, 18], [1, 1], [0, 0], false);
+            basketManagerObj = await createBasketManager([18, 18], [0, 0], false);
             token = await createToken(masset);
         });
         context("should succeed", async () => {
@@ -62,7 +62,7 @@ contract("Masset", async (accounts) => {
         beforeEach(async () => {
             masset = await Masset.new();
             token = await createToken(masset);
-            basketManagerObj = await createBasketManager([18, 18], [1, 1], [1000, 1000], false);
+            basketManagerObj = await createBasketManager([18, 18], [1000, 1000], false);
             await masset.initialize(basketManagerObj.basketManager.address, token.address, false);
             mockTokenDummy = await MockERC20.new("", "", 12, standardAccounts.dummy1, 1);
         });
@@ -106,7 +106,7 @@ contract("Masset", async (accounts) => {
         let basketManagerObj; let token;
         beforeEach(async () => {
             masset = await Masset.new();
-            basketManagerObj = await createBasketManager([18, 18], [1, 1], [1, 1], false);
+            basketManagerObj = await createBasketManager([18, 18], [1, 1], false);
             token = await createToken(masset);
             await masset.initialize(basketManagerObj.basketManager.address, token.address, false);
         });
@@ -142,7 +142,7 @@ contract("Masset", async (accounts) => {
         beforeEach(async () => {
             masset = await Masset.new();
             token = await createToken(masset);
-            basketManagerObj = await createBasketManager([18, 18], [1, 1], [1, 1], false);
+            basketManagerObj = await createBasketManager([18, 18], [1, 1], false);
             await masset.initialize(basketManagerObj.basketManager.address, token. address, false);
             mockTokenDummy = await MockERC20.new("", "", 12, standardAccounts.dummy1, 1);
         });
@@ -201,7 +201,7 @@ contract("Masset", async (accounts) => {
         beforeEach(async () => {
             masset = await Masset.new();
             token = await createToken(masset);
-            basketManagerObj = await createBasketManager([18, 18], [1, 1], [1000, 1000], false);
+            basketManagerObj = await createBasketManager([18, 18], [1000, 1000], false);
             basketManager = basketManagerObj.basketManager;
             bassets = basketManagerObj.bassets;
             await masset.initialize(basketManager.address, token.address, false);
@@ -369,7 +369,7 @@ contract("Masset", async (accounts) => {
                 beforeEach(async () => {
                     masset = await Masset.new();
                     token = await createToken(masset);
-                    basketManagerObj = await createBasketManager([18, 18], [1, 1], [1000, 1000], true);
+                    basketManagerObj = await createBasketManager([18, 18], [1000, 1000], true);
                     basketManager = basketManagerObj.basketManager;
                     bassets = basketManagerObj.bassets;
                     rewardManager = await MockRewardManager.new(masset.address);
@@ -426,7 +426,6 @@ contract("Masset", async (accounts) => {
 
 async function createBasketManager(
     decimals: Array<number>,
-    factors: Array<number>,
     initialBalances: Array<number>,
     bridge: boolean
 ): Promise<any> {
@@ -435,7 +434,7 @@ async function createBasketManager(
         tokens.push(await MockERC20.new("", "", decimals[i], standardAccounts.dummy1, initialBalances[i]));
     }
     const bassets = tokens.map(t => t.address);
-    const basketManager = await BasketManager.new(bassets, factors, 
+    const basketManager = await BasketManager.new(bassets, bassets.map(()=>18), 
         bassets.map(() => bridge ? standardAccounts.bridge : ZERO_ADDRESS)
     );
     return {

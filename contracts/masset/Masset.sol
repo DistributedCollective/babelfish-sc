@@ -547,7 +547,7 @@ contract Masset is IMasset, IERC777Recipient, InitializableOwnable, Initializabl
         // version 3.0 didn't have this method
         if(address(oldRewardManager) != address(0) && !compareStrings(oldRewardManager.getVersion(), "3.0")) {
             // send all the funds from the old RM to the new one
-            oldRewardManager.sendFundsToCurrentRM();
+            oldRewardManager.sendFundsToRewardManager();
         }
         emit onSetRewardManager(msg.sender, address(oldRewardManager), _newRewardManager);
     }
@@ -565,6 +565,11 @@ contract Masset is IMasset, IERC777Recipient, InitializableOwnable, Initializabl
 
     // Temporary migration code
 
+    /**
+     * @dev This should only be called once, immediately after the upgrade from 5.x to 6.0
+     * @param _newBasketManager       New basket manager
+     * @param _newRewardManager       New reward manager
+     */
     function migrateToV6(address _newBasketManager, address _newRewardManager) public onlyOwner {
         
         // make sure we have the correct version here

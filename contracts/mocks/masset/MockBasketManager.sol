@@ -24,11 +24,6 @@ contract MockBasketManager is IBasketManager {
         return 0x0000000000000000000000000000000000000000;
     }
 
-    function getFactor(address _basset) external view returns(int256) {
-        assert(_basset != 0x0000000000000000000000000000000000000000);
-        return 1;
-    }
-
     function getVersion() external pure returns(string memory) {
         return "4.0";
     }
