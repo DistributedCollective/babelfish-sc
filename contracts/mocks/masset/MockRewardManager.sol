@@ -2,6 +2,12 @@ pragma solidity 0.5.17;
 
 contract MockRewardManager {
 
+    address masset;
+
+    constructor(address _masset) public {
+        masset = _masset;
+    }
+
     /**  Incentive methods **/
 
     uint256 public getRewardForDeposit_return;
@@ -22,6 +28,10 @@ contract MockRewardManager {
 
     function setGetPenaltyForWithdrawal_return(uint256 v) public {
         getPenaltyForWithdrawal_return = v;
+    }
+
+    function getMassetAddress() public returns (address) {
+        return masset;
     }
 
     function getPenaltyForWithdrawal(

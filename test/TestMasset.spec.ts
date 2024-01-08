@@ -30,7 +30,7 @@ contract("Masset", async (accounts) => {
         let token;
         beforeEach(async () => {
             masset = await Masset.new();
-            basketManagerObj = await createBasketManager([18, 18], [1, 1], [0, 0], false);
+            basketManagerObj = await createBasketManager([18, 18], [0, 0], false);
             token = await createToken(masset);
         });
         context("should succeed", async () => {
@@ -62,7 +62,7 @@ contract("Masset", async (accounts) => {
         beforeEach(async () => {
             masset = await Masset.new();
             token = await createToken(masset);
-            basketManagerObj = await createBasketManager([18, 18], [1, 1], [1000, 1000], false);
+            basketManagerObj = await createBasketManager([18, 18], [1000, 1000], false);
             await masset.initialize(basketManagerObj.basketManager.address, token.address, false);
             mockTokenDummy = await MockERC20.new("", "", 12, standardAccounts.dummy1, 1);
         });
@@ -106,7 +106,7 @@ contract("Masset", async (accounts) => {
         let basketManagerObj; let token;
         beforeEach(async () => {
             masset = await Masset.new();
-            basketManagerObj = await createBasketManager([18, 18], [1, 1], [1, 1], false);
+            basketManagerObj = await createBasketManager([18, 18], [1, 1], false);
             token = await createToken(masset);
             await masset.initialize(basketManagerObj.basketManager.address, token.address, false);
         });
@@ -142,7 +142,7 @@ contract("Masset", async (accounts) => {
         beforeEach(async () => {
             masset = await Masset.new();
             token = await createToken(masset);
-            basketManagerObj = await createBasketManager([18, 18], [1, 1], [1, 1], false);
+            basketManagerObj = await createBasketManager([18, 18], [1, 1], false);
             await masset.initialize(basketManagerObj.basketManager.address, token. address, false);
             mockTokenDummy = await MockERC20.new("", "", 12, standardAccounts.dummy1, 1);
         });
@@ -191,63 +191,6 @@ contract("Masset", async (accounts) => {
         });
     });
 
-    describe("precision conversion", async () => {
-        let masset;
-        let basketManagerObj; let token;
-        beforeEach(async () => {
-            masset = await Masset.new();
-            token = await createToken(masset);
-            basketManagerObj = await createBasketManager([20, 12], [100, -1000000], [1, 1], false);
-            await masset.initialize(basketManagerObj.basketManager.address, token.address, false);
-        });
-        it("works both ways", async () => {
-            expect(await getBalance(basketManagerObj.mockToken1, standardAccounts.dummy1)).to.equal(
-                "100000000000000000000",
-            );
-            expect(await getBalance(basketManagerObj.mockToken2, standardAccounts.dummy1)).to.equal(
-                "1000000000000",
-            );
-
-            await basketManagerObj.mockToken1.approve(masset.address, "100000000000000000000", {
-                from: standardAccounts.dummy1,
-            });
-            await masset.mint(basketManagerObj.mockToken1.address, "100000000000000000000", {
-                from: standardAccounts.dummy1,
-            });
-            await basketManagerObj.mockToken2.approve(masset.address, "1000000000000", {
-                from: standardAccounts.dummy1,
-            });
-            await masset.mint(basketManagerObj.mockToken2.address, "1000000000000", {
-                from: standardAccounts.dummy1,
-            });
-
-            expect(await getBalance(token, standardAccounts.dummy1)).to.equal(
-                "2000000000000000000",
-            );
-            expect(await getBalance(basketManagerObj.mockToken1, standardAccounts.dummy1)).to.equal(
-                "0",
-            );
-            expect(await getBalance(basketManagerObj.mockToken2, standardAccounts.dummy1)).to.equal(
-                "0",
-            );
-
-            await token.transfer(standardAccounts.dummy2, "1000000000000000000", {
-                from: standardAccounts.dummy1,
-            });
-            expect(await getBalance(token, standardAccounts.dummy1)).to.equal(
-                "1000000000000000000",
-            );
-
-            await masset.redeem(basketManagerObj.mockToken2.address, "1000000000000000000", {
-                from: standardAccounts.dummy2,
-            });
-            expect(await getBalance(token, standardAccounts.dummy2)).to.equal("0");
-            expect(await getBalance(basketManagerObj.mockToken2, standardAccounts.dummy2)).to.equal(
-                "1000000000000",
-            );
-        });
-    });
-
     describe('reward manager integration', () => {
         let masset: MassetInstance;
         let basketManager; 
@@ -258,11 +201,11 @@ contract("Masset", async (accounts) => {
         beforeEach(async () => {
             masset = await Masset.new();
             token = await createToken(masset);
-            basketManagerObj = await createBasketManager([18, 18], [1, 1], [1000, 1000], false);
+            basketManagerObj = await createBasketManager([18, 18], [1000, 1000], false);
             basketManager = basketManagerObj.basketManager;
             bassets = basketManagerObj.bassets;
             await masset.initialize(basketManager.address, token.address, false);
-            rewardManager = await MockRewardManager.new();
+            rewardManager = await MockRewardManager.new(masset.address);
             await masset.setRewardManager(rewardManager.address);
         });
         context('withdrawal', () => {
@@ -426,9 +369,10 @@ contract("Masset", async (accounts) => {
                 beforeEach(async () => {
                     masset = await Masset.new();
                     token = await createToken(masset);
-                    basketManagerObj = await createBasketManager([18, 18], [1, 1], [1000, 1000], true);
+                    basketManagerObj = await createBasketManager([18, 18], [1000, 1000], true);
                     basketManager = basketManagerObj.basketManager;
                     bassets = basketManagerObj.bassets;
+                    rewardManager = await MockRewardManager.new(masset.address);
                     await masset.initialize(basketManager.address, token.address, false);
                     await masset.setRewardManager(rewardManager.address);
                 });
@@ -438,6 +382,8 @@ contract("Masset", async (accounts) => {
                     const recipient = standardAccounts.dummy4;
                     const userData = web3.eth.abi.encodeParameters(['address', 'uint256'], [recipient, minimum]);
     
+                    await rewardManager.setGetRewardForDeposit_return(reward);
+
                     const tx = await masset.onTokensMinted(
                         amount, 
                         basketManagerObj.mockToken2.address,
@@ -457,14 +403,6 @@ contract("Masset", async (accounts) => {
                     expect(await rewardManager.sendRewardForDepositCalled()).to.eq(true);
                     expect(await rewardManager.sendRewardForDepositCalled_recipient()).to.eq(recipient);
                     expect((await rewardManager.sendRewardForDepositCalled_sum()).toString()).to.eq(amount);
-    
-                    await expectEvent(tx.receipt, 'onRewardPaid', {
-                        basset: basketManagerObj.mockToken2.address,
-                        amount,
-                        user: recipient,
-                        reward
-                    });
-    
                 });
                 it('backward compatibility of bridge user data encoding', async () => {
                     const recipient = standardAccounts.bridge;
@@ -488,7 +426,6 @@ contract("Masset", async (accounts) => {
 
 async function createBasketManager(
     decimals: Array<number>,
-    factors: Array<number>,
     initialBalances: Array<number>,
     bridge: boolean
 ): Promise<any> {
@@ -497,7 +434,7 @@ async function createBasketManager(
         tokens.push(await MockERC20.new("", "", decimals[i], standardAccounts.dummy1, initialBalances[i]));
     }
     const bassets = tokens.map(t => t.address);
-    const basketManager = await BasketManager.new(bassets, factors, 
+    const basketManager = await BasketManager.new(bassets, bassets.map(()=>18), 
         bassets.map(() => bridge ? standardAccounts.bridge : ZERO_ADDRESS)
     );
     return {

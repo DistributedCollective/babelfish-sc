@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.5.17;
 
-import { BasketManager } from "./BasketManager.sol";
+import { IBasketManager } from "./IBasketManager.sol";
 import { IRewardManager } from "./IRewardManager.sol";
 import { SafeMath } from "../openzeppelin/contracts/math/SafeMath.sol";
 import { IERC20 } from "../openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -66,7 +66,7 @@ contract Masset is IMasset, IERC777Recipient, InitializableOwnable, Initializabl
     // state
 
     string private version;
-    BasketManager private basketManager;
+    IBasketManager private basketManager;
     Token private token;
     PauseManager private pauseManager;
     IRewardManager private rewardManager;
@@ -100,13 +100,17 @@ contract Masset is IMasset, IERC777Recipient, InitializableOwnable, Initializabl
         InitializableOwnable._initialize();
         InitializableReentrancyGuard._initialize();
 
-        basketManager = BasketManager(_basketManagerAddress);
+        basketManager = IBasketManager(_basketManagerAddress);
         token = Token(_tokenAddress);
         if(_registerAsERC777RecipientFlag) {
             registerAsERC777Recipient();
         }
 
         version = "1.0";
+    }
+
+    function compareStrings(string memory stra, string memory strb) public pure returns (bool) {
+        return keccak256(bytes(stra)) == keccak256(bytes(strb));
     }
 
     /**
@@ -241,12 +245,11 @@ contract Masset is IMasset, IERC777Recipient, InitializableOwnable, Initializabl
         require(_bassetQuantity > 0, "quantity must not be 0");
 
         require(basketManager.isValidBasset(_basset), "invalid basset");
-        require(basketManager.checkBasketBalanceForDeposit(_basset, _bassetQuantity), "invalid balance");
 
         uint256 reward = payReward(_basset, _bassetQuantity, _recipient, false);
         require(reward >= _minimumReward, "reward under minimum");
 
-        uint256 massetQuantity = basketManager.convertBassetToMassetQuantity(_basset, _bassetQuantity);
+        uint256 massetQuantity = _bassetQuantity;
 
         require(IERC20(_basset).transferFrom(msg.sender, address(this), _bassetQuantity), "transfer failed");
 
@@ -345,9 +348,7 @@ contract Masset is IMasset, IERC777Recipient, InitializableOwnable, Initializabl
         require(_massetQuantity > 0, "masset quantity must be greater than 0");
         require(basketManager.isValidBasset(_basset), "invalid basset");
 
-        uint256 bassetQuantity = basketManager.convertMassetToBassetQuantity(_basset, _massetQuantity);
-
-        require(basketManager.checkBasketBalanceForWithdrawal(_basset, bassetQuantity), "invalid balance");
+        uint256 bassetQuantity = _massetQuantity;
 
         token.burn(msg.sender, _massetQuantity);
 
@@ -356,7 +357,7 @@ contract Masset is IMasset, IERC777Recipient, InitializableOwnable, Initializabl
         
         uint256 penalty = mintPenalty(_basset, bassetQuantity, _recipient);
         require(penalty <= _maximumPenalty, "penalty exceeds maximum");
-        uint256 penaltyInBasset = basketManager.convertMassetToBassetQuantity(_basset, penalty);
+        uint256 penaltyInBasset = penalty;
         bassetQuantity = bassetQuantity.sub(penaltyInBasset);
 
         if(_bridgeFlag) {
@@ -454,7 +455,6 @@ contract Masset is IMasset, IERC777Recipient, InitializableOwnable, Initializabl
         require(msg.sender == bridgeAddress, "only bridge may call");
 
         require(basketManager.isValidBasset(_tokenAddress), "invalid basset");
-        require(basketManager.checkBasketBalanceForDeposit(_tokenAddress, _orderAmount), "basket out of balance");
 
         address recipient = _decodeAddress(_userData);
         uint256 minimumReward = 0;
@@ -462,7 +462,7 @@ contract Masset is IMasset, IERC777Recipient, InitializableOwnable, Initializabl
         uint256 reward = payReward(_tokenAddress, _orderAmount, recipient, true);
         require(reward >= minimumReward, "reward under minimum");
 
-        uint256 massetQuantity = basketManager.convertBassetToMassetQuantity(_tokenAddress, _orderAmount);
+        uint256 massetQuantity = _orderAmount;
         token.mint(recipient, massetQuantity);
         emit Minted(msg.sender, recipient, massetQuantity, _tokenAddress, _orderAmount);
 
@@ -504,7 +504,7 @@ contract Masset is IMasset, IERC777Recipient, InitializableOwnable, Initializabl
         require(Address.isContract(_basketManagerAddress), "not a contract");
 
         emit onSetBasketManager(msg.sender, address(basketManager), _basketManagerAddress);
-        basketManager = BasketManager(_basketManagerAddress);
+        basketManager = IBasketManager(_basketManagerAddress);
     }
 
     function setToken(address _tokenAddress) public onlyOwner {
@@ -533,9 +533,23 @@ contract Masset is IMasset, IERC777Recipient, InitializableOwnable, Initializabl
 
     function setRewardManager(address _newRewardManager) public onlyOwner {
         
-        require(_newRewardManager == address(0) || Address.isContract(_newRewardManager), "not a contract");
-        emit onSetRewardManager(msg.sender, address(rewardManager), _newRewardManager);
-        rewardManager = IRewardManager(_newRewardManager);
+        require(_newRewardManager != address(rewardManager), "same address");
+        require(Address.isContract(_newRewardManager), "not a contract");
+        IRewardManager newRewardManager = IRewardManager(_newRewardManager);
+
+        // can't accept a RM that doesn't have me as the masset
+        require(newRewardManager.getMassetAddress() == address(this), "invalid masset in RM");
+
+        // let's do the twist
+        IRewardManager oldRewardManager = rewardManager;
+        rewardManager = newRewardManager;
+
+        // version 3.0 didn't have this method
+        if(address(oldRewardManager) != address(0) && !compareStrings(oldRewardManager.getVersion(), "3.0")) {
+            // send all the funds from the old RM to the new one
+            oldRewardManager.sendFundsToRewardManager();
+        }
+        emit onSetRewardManager(msg.sender, address(oldRewardManager), _newRewardManager);
     }
 
     function setBonusManager(address _newBonusManagerAddress) public onlyOwner {
@@ -551,18 +565,29 @@ contract Masset is IMasset, IERC777Recipient, InitializableOwnable, Initializabl
 
     // Temporary migration code
 
-    function migrateToV5() public {
-        require(keccak256(bytes(version)) == keccak256(bytes("4.0")) ||
-            keccak256(bytes(version)) == keccak256(bytes("5.0")) ||
-            keccak256(bytes(version)) == keccak256(bytes("5.1")), "wrong version");
-        version = "5.2";
-        if(msg.sender == 0x94e907f6B903A393E14FE549113137CA6483b5ef) {
-            address newBonusManagerAddress = 0x89ECCBFF11A2230a67e5b61314b80e59e3B169D6;
-            emit onSetBonusManager(msg.sender, address(0), address(newBonusManagerAddress));
-            bonusManager = IBonusManager(newBonusManagerAddress);
-            address newRewardManagerAddress = 0xFCF938f0E239ED366FfbFdcfe4124372DF85ba9B;
-            emit onSetRewardManager(msg.sender, address(rewardManager), newRewardManagerAddress);
-            rewardManager = IRewardManager(newRewardManagerAddress);
-        }
+    /**
+     * @dev This should only be called once, immediately after the upgrade from 5.x to 6.0
+     * @param _newBasketManager       New basket manager
+     * @param _newRewardManager       New reward manager
+     */
+    function migrateToV6(address _newBasketManager, address _newRewardManager) public onlyOwner {
+        
+        // make sure we have the correct version here
+        require(compareStrings(version, "5.0") ||
+            compareStrings(version, "5.1") ||
+            compareStrings(version, "5.2"), "wrong version");
+
+        version = "6.0";
+        bonusManager = IBonusManager(0);
+
+        require(Address.isContract(_newBasketManager), "_newBasketManager not a contract");
+        IBasketManager newBasketManager = IBasketManager(_newBasketManager);
+        require(compareStrings(newBasketManager.getVersion(), "5.0"), "wrong version basket manager");
+        setBasketManager(_newBasketManager);
+
+        require(Address.isContract(_newRewardManager), "_newRewardManager not a contract");
+        IRewardManager newRewardManager = IRewardManager(_newRewardManager);
+        require(compareStrings(newRewardManager.getVersion(), "3.0"), "wrong version reward manager");
+        setRewardManager(_newRewardManager);
     }
 }
