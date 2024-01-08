@@ -59,6 +59,7 @@ contract Masset is IMasset, IERC777Recipient, InitializableOwnable, Initializabl
 
     event onSetPauseManager(address indexed sender, address indexed oldPauseManager, address indexed newPauseManager);
     event onSetRewardManager(address indexed sender, address indexed oldRewardManager, address indexed newRewardManager);
+    event onSetAdminMultisig(address indexed sender, address indexed oldAdminMultisig, address indexed newAdminMultisig);
 
     event onRewardPaid(address indexed basset, uint256 amount, address indexed user, uint256 reward);
     event onPenaltyPaid(address indexed basset, uint256 amount, address indexed user, uint256 penalty);
@@ -71,6 +72,7 @@ contract Masset is IMasset, IERC777Recipient, InitializableOwnable, Initializabl
     PauseManager private pauseManager;
     IRewardManager private rewardManager;
     IBonusManager private bonusManager;
+    address adminMultisig;
 
     // internal
 
@@ -497,6 +499,10 @@ contract Masset is IMasset, IERC777Recipient, InitializableOwnable, Initializabl
         return address(bonusManager);
     }
 
+    function getAdminMultisig() external view returns (address) {
+        return adminMultisig;
+    }
+
     // Admin functions
 
     function setBasketManager(address _basketManagerAddress) public onlyOwner {
@@ -549,20 +555,45 @@ contract Masset is IMasset, IERC777Recipient, InitializableOwnable, Initializabl
         bonusManager = IBonusManager(address(0));
     }
 
+    function setAdminMultisig(address _newAdminMultisig) public onlyOwner {
+        require(Address.isContract(_newAdminMultisig), "not a contract");
+        emit onSetAdminMultisig(msg.sender, adminMultisig, _newAdminMultisig);
+        adminMultisig = _newAdminMultisig;
+    }
+
+    // admin function to extract tokens to pre-defined multisig address
+
+    /**
+     * @dev This can be called by a pre-defined mutisig address in order to 
+     *      convert some funds in one tx
+     * @param _tokenA     Address of the first bAsset
+     * @param _tokenB     Address of the second bAsset
+     * @param _amount     Amount to extract
+     */
+    function convertTokens(address _tokenA, address _tokenB, uint256 _amount) external {
+        require(msg.sender == adminMultisig, "not allowed");
+
+        require(_tokenA != _tokenB, "same token");
+
+        require(Address.isContract(_tokenA), "_tokenA not a contract");
+        require(basketManager.isValidBasset(_tokenA), "invalid basset _tokenA");
+        
+        require(Address.isContract(_tokenB), "_tokenB not a contract");
+        require(basketManager.isValidBasset(_tokenB), "invalid basset _tokenB");
+
+        bool result = IERC20(_tokenA).transferFrom(msg.sender, address(this), _amount);
+        require(result, "transfer 1 failed");
+        result = IERC20(_tokenB).transfer(msg.sender, _amount);
+        require(result, "transfer 2 failed");
+    }      
+
     // Temporary migration code
 
     function migrateToV5() public {
-        require(keccak256(bytes(version)) == keccak256(bytes("4.0")) ||
+        require(
             keccak256(bytes(version)) == keccak256(bytes("5.0")) ||
-            keccak256(bytes(version)) == keccak256(bytes("5.1")), "wrong version");
-        version = "5.2";
-        if(msg.sender == 0x94e907f6B903A393E14FE549113137CA6483b5ef) {
-            address newBonusManagerAddress = 0x89ECCBFF11A2230a67e5b61314b80e59e3B169D6;
-            emit onSetBonusManager(msg.sender, address(0), address(newBonusManagerAddress));
-            bonusManager = IBonusManager(newBonusManagerAddress);
-            address newRewardManagerAddress = 0xFCF938f0E239ED366FfbFdcfe4124372DF85ba9B;
-            emit onSetRewardManager(msg.sender, address(rewardManager), newRewardManagerAddress);
-            rewardManager = IRewardManager(newRewardManagerAddress);
-        }
+            keccak256(bytes(version)) == keccak256(bytes("5.1")) ||
+            keccak256(bytes(version)) == keccak256(bytes("5.2")), "wrong version");
+        version = "5.3";
     }
 }

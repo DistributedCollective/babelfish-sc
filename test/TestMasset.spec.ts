@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/explicit-function-return-type */
 /* eslint-disable @typescript-eslint/no-use-before-define */
 import envSetup from "@utils/env_setup";
-import { expectRevert, expectEvent } from "@openzeppelin/test-helpers";
+import { expectRevert, expectEvent, expectException } from "@openzeppelin/test-helpers";
 import { ZERO, ZERO_ADDRESS } from "@utils/constants";
 import { StandardAccounts } from "@utils/standardAccounts";
 import { BasketManagerInstance, MassetInstance, RewardManagerContract, RewardManagerInstance } from "types/generated";
@@ -16,6 +16,7 @@ const RewardManager: RewardManagerContract = artifacts.require("RewardManager");
 const Masset = artifacts.require("Masset");
 const Token = artifacts.require("Token");
 const MockERC20 = artifacts.require("MockERC20");
+const MultiSigWallet = artifacts.require("MultiSigWallet");
 
 let standardAccounts;
 
@@ -51,6 +52,43 @@ contract("Masset", async (accounts) => {
                 await masset.initialize(basketManagerObj.basketManager.address, token.address, false);
                 await expectRevert.unspecified(
                     masset.initialize(basketManagerObj.basketManager.address, token.address, false));
+            });
+        });
+    });
+
+    describe("admin role", async () => {
+        let masset;
+        let basketManagerObj; 
+        let token;
+        beforeEach(async () => {
+            masset = await Masset.new();
+            basketManagerObj = await createBasketManager([18, 18], [1, 1], [0, 0], false);
+            token = await createToken(masset);
+            await masset.initialize(basketManagerObj.basketManager.address, token.address, false);
+            await masset.transferOwnership(standardAccounts.governor);
+        });
+        it("setAdminMultisig can only be called by owner", async () => {
+            const ms = await MultiSigWallet.new(accounts, 2);
+            await expectRevert.unspecified(
+                masset.setAdminMultisig(ms.address));
+        });
+        it("setAdminMultisig will not accept zero", async () => {
+            await expectRevert.unspecified(
+                masset.setAdminMultisig(ZERO_ADDRESS, { from: standardAccounts.governor }));
+        });
+        it("setAdminMultisig will not accept an account", async () => {
+            await expectRevert.unspecified(
+                masset.setAdminMultisig(standardAccounts.default, { from: standardAccounts.governor }));
+        });
+        it("setAdminMultisig succeeds", async () => {
+            const ms = await MultiSigWallet.new(accounts, 2);
+            const tx = await masset.setAdminMultisig(ms.address, { from: standardAccounts.governor });
+            const newMs = await masset.getAdminMultisig();
+            expect(newMs).to.eq(ms.address);
+            await expectEvent(tx.receipt, 'onSetAdminMultisig', {
+                sender: standardAccounts.governor,
+                newAdminMultisig: ms.address,
+                oldAdminMultisig: ZERO_ADDRESS
             });
         });
     });
@@ -101,6 +139,7 @@ contract("Masset", async (accounts) => {
             });
         });
     });
+
     describe("mintTo", async () => {
         let masset;
         let basketManagerObj; let token;
@@ -189,6 +228,67 @@ contract("Masset", async (accounts) => {
                     masset.redeem(basketManagerObj.mockToken1.address, 100000));
             });
         });
+    });
+
+    describe("convertTokens", async () => {
+        let masset;
+        let basketManagerObj; 
+        let token;
+        let mockToken1, mockToken2;
+        let ms;
+        const testAmount = new BN('1000');
+
+        beforeEach(async () => {
+            masset = await Masset.new();
+            token = await createToken(masset);
+            basketManagerObj = await createBasketManager([20, 12], [100, -1000000], [1, 1], false);
+            await masset.initialize(basketManagerObj.basketManager.address, token.address, false);
+            mockToken1 = basketManagerObj.mockToken1;
+            mockToken2 = basketManagerObj.mockToken2;
+            await mockToken1.mint(standardAccounts.default, 1000000);
+            await mockToken2.mint(masset.address, 1000000);
+            ms = await MultiSigWallet.new([ standardAccounts.default ], 1);
+            await masset.setAdminMultisig(ms.address);
+        });
+
+        it("is only allowed for multisig address", async () => {
+            expectRevert.unspecified(masset.convertTokens(mockToken1.address, mockToken2.address, testAmount));
+        });
+
+        it("is only allowed for whitelisted addresses", async () => {
+            const abi = masset.contract.methods['convertTokens(address,address,uint256)'](mockToken1.address, mockToken2.address, testAmount).encodeABI();
+            expectRevert.unspecified(ms.submitTransaction(masset.address, 0, abi));
+        });
+
+        it("works as expected", async () => {
+
+            await mockToken1.transfer(ms.address, testAmount);
+
+            const balanceT1MassetBefore = await mockToken1.balanceOf(masset.address);
+            const balanceT2MassetBefore = await mockToken2.balanceOf(masset.address);
+            const balanceT1MsBefore = await mockToken1.balanceOf(ms.address);
+            const balanceT2MsBefore = await mockToken2.balanceOf(ms.address);
+
+            let abi = mockToken1.contract.methods['approve(address,uint256)'](masset.address, testAmount.toString()).encodeABI();
+            await ms.submitTransaction(mockToken1.address, 0, abi);
+
+            abi = masset.contract.methods['convertTokens(address,address,uint256)'](mockToken1.address, mockToken2.address, testAmount.toString()).encodeABI();
+            await ms.submitTransaction(masset.address, 0, abi);
+
+            const balanceT1MassetAfter = await mockToken1.balanceOf(masset.address);
+            const balanceT2MassetAfter = await mockToken2.balanceOf(masset.address);
+            const balanceT1MsAfter = await mockToken1.balanceOf(ms.address);
+            const balanceT2MsAfter = await mockToken2.balanceOf(ms.address);
+
+            // t1 sent to masset
+            expect(balanceT1MsBefore.sub(balanceT1MsAfter).toNumber()).eq(testAmount.toNumber());
+            expect(balanceT1MassetAfter.sub(balanceT1MassetBefore).toNumber()).eq(testAmount.toNumber());
+
+            // t2 received from masset
+            expect(balanceT2MsAfter.sub(balanceT2MsBefore).toNumber()).eq(testAmount.toNumber());
+            expect(balanceT2MassetBefore.sub(balanceT2MassetAfter).toNumber()).eq(testAmount.toNumber());
+        });
+
     });
 
     describe("precision conversion", async () => {
