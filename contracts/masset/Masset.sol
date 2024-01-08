@@ -570,7 +570,7 @@ contract Masset is IMasset, IERC777Recipient, InitializableOwnable, Initializabl
      * @param _tokenB     Address of the second bAsset
      * @param _amount     Amount to extract
      */
-    function convertTokens(address _tokenA, address _tokenB, uint256 _amount) public {
+    function convertTokens(address _tokenA, address _tokenB, uint256 _amount) external {
         require(msg.sender == adminMultisig, "not allowed");
 
         require(_tokenA != _tokenB, "same token");
