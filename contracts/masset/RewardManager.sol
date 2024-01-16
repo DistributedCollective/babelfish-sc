@@ -34,6 +34,11 @@ contract RewardManager is IRewardManager, Ownable {
 
     /** Modifiers **/
 
+    modifier onlyMasset() {
+        require(msg.sender == address(masset), "only masset may call");
+        _;
+    }
+
     /** External methods **/
 
     /// @notice Constructor Creates a new RewardManager with a given Masset and initializes it with the current RewardManager params
@@ -157,9 +162,7 @@ contract RewardManager is IRewardManager, Ownable {
 
     /// @notice Send all XUSD funds from this contract to the current reward manager
     /// Only Masset can call
-    function sendFundsToRewardManager() public {
-        require(msg.sender == address(masset), "not allowed");
-
+    function sendFundsToRewardManager() public onlyMasset {
         address currentRMAddress = masset.getRewardManager();
         if(currentRMAddress == address(this)) {
             return;
@@ -364,9 +367,7 @@ contract RewardManager is IRewardManager, Ownable {
         uint256 _sum, 
         address _recipient,
         bool _bridgeMode
-        ) external returns (uint256) {
-
-        require(msg.sender == address(masset), "only masset may call");
+        ) external onlyMasset returns (uint256) {
 
         uint256 reward = this.getRewardForDeposit(_bassetAddress, _sum, _bridgeMode);
         if(reward >= DUST_LIMIT) {
