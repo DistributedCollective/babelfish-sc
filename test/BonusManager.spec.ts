@@ -39,7 +39,7 @@ contract("BonusManager", async (accounts) => {
         await bonusManager.setTokens(mockTokens);
         await mockMasset.setBonusManager(bonusManager.address);
 
-        mockRewardManager = await MockRewardManager.new();
+        mockRewardManager = await MockRewardManager.new(mockMasset.address);
         await mockMasset.setRewardManager(mockRewardManager.address);
 
         token = await MockERC20.new('XUSD', 'XUSD', 18, bonusManager.address, '1000000');

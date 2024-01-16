@@ -193,7 +193,7 @@ async function createBasketManager(masset: MassetInstance, initial: string): Pro
     const mockToken1 = await MockERC20.new("", "", 18, initial, 100);
     const mockToken2 = await MockERC20.new("", "", 18, initial, 100);
     const bassets = [mockToken1.address, mockToken2.address];
-    const basketManager = await BasketManager.new(bassets, [1, 1], [ZERO_ADDRESS, ZERO_ADDRESS]);
+    const basketManager = await BasketManager.new(bassets, [18, 18], [ZERO_ADDRESS, ZERO_ADDRESS]);
     return {
         mockToken1,
         mockToken2,

@@ -26,29 +26,29 @@ contract("BasketManager", async (accounts) => {
     });
 
     describe("initialize", async () => {
-        let bassets; let factors; let bridges;
+        let bassets; let bridges; let digits;
         before(async () => {
             bassets = [mockToken1.address, mockToken2.address, mockToken3.address];
-            factors = [1, 1, 1];
             bridges = [ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS];
+            digits = [18, 18, 18];
         });
         context("should succeed", async () => {
             it("when given all the params", async () => {
-                const inst = await BasketManager.new(bassets, factors, bridges);
+                const inst = await BasketManager.new(bassets, digits, bridges);
             });
         });
         context("should fail", async () => {
             it("when bassets missing", async () => {
-                await expectRevert.unspecified(BasketManager.new([], factors, bridges));
+                await expectRevert.unspecified(BasketManager.new([], digits, bridges));
             });
-            it("when factors missing", async () => {
+            it("when digits missing", async () => {
                 await expectRevert.unspecified(BasketManager.new(bassets, [], bridges));
             });
         });
         context("checking if bassets are valid", () => {
             let inst;
             beforeEach(async () => {
-                inst = await BasketManager.new(bassets, factors, bridges);
+                inst = await BasketManager.new(bassets, digits, bridges);
             });
             context("isValidBasset", () => {
                 it("should return false if basset is in the basket", async () => {
@@ -95,25 +95,25 @@ contract("BasketManager", async (accounts) => {
         context("addBasset", () => {
             it("should work and emit as expected", async () => {
                 expect(await inst.isValidBasset(mockToken1.address)).to.eq(false);
-                const tx = await inst.addBasset(mockToken1.address, 1, ZERO_ADDRESS);
+                const tx = await inst.addBasset(mockToken1.address, 18, ZERO_ADDRESS);
                 await expectEvent(tx.receipt, 'onBassetAdded', {
                     sender: sa.default,
                     basset: mockToken1.address,
-                    factor: '1',
+                    digits: '18',
                     bridge: ZERO_ADDRESS
                 });
                 expect(await inst.isValidBasset(mockToken1.address)).to.eq(true);
             });
 
             it("should revert if not owner", async () => {
-                await expectRevert.unspecified(inst.addBasset(mockToken1.address, 1, ZERO_ADDRESS, { from: sa.dummy4 }));
+                await expectRevert.unspecified(inst.addBasset(mockToken1.address, 18, ZERO_ADDRESS, { from: sa.dummy4 }));
             });
         });
 
         context("removeBasset", () => {
             it("should work and emit as expected", async () => {
-                await inst.addBasset(mockToken2.address, 1, ZERO_ADDRESS);
-                await inst.addBasset(mockToken1.address, 1, ZERO_ADDRESS);
+                await inst.addBasset(mockToken2.address, 18, ZERO_ADDRESS);
+                await inst.addBasset(mockToken1.address, 18, ZERO_ADDRESS);
                 expect(await inst.isValidBasset(mockToken1.address)).to.eq(true);
                 const tx = await inst.removeBasset(mockToken1.address);
                 await expectEvent(tx.receipt, 'onBassetRemoved', {
