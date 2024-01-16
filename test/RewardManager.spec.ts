@@ -40,7 +40,7 @@ contract("RewardManager", async (accounts) => {
     it("constructor", async () => {
         const newRewardManager = await RewardManager.new(address(masset));
         const version = await newRewardManager.getVersion();
-        expect(version).eq('2.0');
+        expect(version).eq('3.0');
     });
 
     describe("basic math", async () => {
@@ -153,7 +153,7 @@ async function setTestCaseLikeBridge(mockBasketManager, rewardManager, mockToken
   let total = new BN(0);
   for(let i = 0; i < testCase.initialBalances.length; i++) {
       let tokenBalance = floatToBn(testCase.initialBalances[i]);
-      if(i == testCase.tokenIndex) tokenBalance = tokenBalance.add(floatToBn(testCase.amount));
+      if(i === testCase.tokenIndex) tokenBalance = tokenBalance.add(floatToBn(testCase.amount));
       await mockBasketManager.setBalanceInMasset(tokens[i], tokenBalance);
       total = total.add(tokenBalance);
   }
@@ -161,7 +161,7 @@ async function setTestCaseLikeBridge(mockBasketManager, rewardManager, mockToken
 }
 
 function roundToN(v, n) {
-    return Math.round(v * Math.pow(10, n)) / Math.pow(10, n);
+    return Math.round(v * 10 ** n) / 10 ** n;
 }
 
 class TestCase {
