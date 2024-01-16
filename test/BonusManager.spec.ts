@@ -69,8 +69,8 @@ contract("BonusManager", async (accounts) => {
                 setMinimumAmount: ['getMinimumAmount', ZERO, randBN()],
                 setTokens: ['getTokens', [], mockTokens]
             };
-            for (let setFnName of Object.keys(tests)) {
-                it('setter: ' + setFnName, async () => {
+            for (const setFnName of Object.keys(tests)) {
+                it(`setter: ${  setFnName}`, async () => {
                     const [getFnName, before, after] = tests[setFnName];
                     await bonusManager[setFnName](before);
                     const actualBefore = await bonusManager[getFnName]();
@@ -90,8 +90,8 @@ contract("BonusManager", async (accounts) => {
                 setMinimumAmount: () => bonusManager.setMinimumAmount(ZERO, { from: notOwner }),
                 setTokens: () => bonusManager.setTokens([], { from: notOwner })
             };
-            for (let key of Object.keys(tests)) {
-                it('setter: ' + key, async () => {
+            for (const key of Object.keys(tests)) {
+                it(`setter: ${  key}`, async () => {
                     await expectRevert(tests[key](), 'not the owner');
                 });
             }
@@ -240,5 +240,5 @@ function floatToBn(n: number): BN {
 }
 
 function roundToN(v, n) {
-    return Math.round(v * Math.pow(10, n)) / Math.pow(10, n);
+    return Math.round(v *10 ** n) / 10 ** n;
 }

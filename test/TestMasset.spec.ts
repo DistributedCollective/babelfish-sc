@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/explicit-function-return-type */
 /* eslint-disable @typescript-eslint/no-use-before-define */
 import envSetup from "@utils/env_setup";
-import { expectRevert, expectEvent } from "@openzeppelin/test-helpers";
+import { expectRevert, expectEvent, expectException } from "@openzeppelin/test-helpers";
 import { ZERO, ZERO_ADDRESS } from "@utils/constants";
 import { StandardAccounts } from "@utils/standardAccounts";
 import { BasketManagerInstance, MassetInstance, RewardManagerContract, RewardManagerInstance } from "types/generated";
@@ -16,6 +16,7 @@ const RewardManager: RewardManagerContract = artifacts.require("RewardManager");
 const Masset = artifacts.require("Masset");
 const Token = artifacts.require("Token");
 const MockERC20 = artifacts.require("MockERC20");
+const MultiSigWallet = artifacts.require("MultiSigWallet");
 
 let standardAccounts;
 
@@ -51,6 +52,43 @@ contract("Masset", async (accounts) => {
                 await masset.initialize(basketManagerObj.basketManager.address, token.address, false);
                 await expectRevert.unspecified(
                     masset.initialize(basketManagerObj.basketManager.address, token.address, false));
+            });
+        });
+    });
+
+    describe("admin role", async () => {
+        let masset;
+        let basketManagerObj; 
+        let token;
+        beforeEach(async () => {
+            masset = await Masset.new();
+            basketManagerObj = await createBasketManager([18, 18], [1, 1], [0, 0], false);
+            token = await createToken(masset);
+            await masset.initialize(basketManagerObj.basketManager.address, token.address, false);
+            await masset.transferOwnership(standardAccounts.governor);
+        });
+        it("setAdminMultisig can only be called by owner", async () => {
+            const ms = await MultiSigWallet.new(accounts, 2);
+            await expectRevert.unspecified(
+                masset.setAdminMultisig(ms.address));
+        });
+        it("setAdminMultisig will not accept zero", async () => {
+            await expectRevert.unspecified(
+                masset.setAdminMultisig(ZERO_ADDRESS, { from: standardAccounts.governor }));
+        });
+        it("setAdminMultisig will not accept an account", async () => {
+            await expectRevert.unspecified(
+                masset.setAdminMultisig(standardAccounts.default, { from: standardAccounts.governor }));
+        });
+        it("setAdminMultisig succeeds", async () => {
+            const ms = await MultiSigWallet.new(accounts, 2);
+            const tx = await masset.setAdminMultisig(ms.address, { from: standardAccounts.governor });
+            const newMs = await masset.getAdminMultisig();
+            expect(newMs).to.eq(ms.address);
+            await expectEvent(tx.receipt, 'onSetAdminMultisig', {
+                sender: standardAccounts.governor,
+                newAdminMultisig: ms.address,
+                oldAdminMultisig: ZERO_ADDRESS
             });
         });
     });
@@ -101,6 +139,7 @@ contract("Masset", async (accounts) => {
             });
         });
     });
+
     describe("mintTo", async () => {
         let masset;
         let basketManagerObj; let token;
