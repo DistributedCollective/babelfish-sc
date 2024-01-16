@@ -457,10 +457,7 @@ contract Masset is IMasset, IERC777Recipient, InitializableOwnable, Initializabl
         require(basketManager.isValidBasset(_tokenAddress), "invalid basset");
 
         address recipient = _decodeAddress(_userData);
-        uint256 minimumReward = 0;
-
         uint256 reward = payReward(_tokenAddress, _orderAmount, recipient, true);
-        require(reward >= minimumReward, "reward under minimum");
 
         uint256 massetQuantity = _orderAmount;
         token.mint(recipient, massetQuantity);
