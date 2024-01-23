@@ -605,7 +605,7 @@ contract Masset is IMasset, IERC777Recipient, InitializableOwnable, Initializabl
      * @param _newBasketManager       New basket manager
      * @param _newRewardManager       New reward manager
      */
-    function migrateToV6(address _newBasketManager, address _newRewardManager) public {
+    function migrateToV6() public {
         
         // make sure we have the correct version here
         require(
