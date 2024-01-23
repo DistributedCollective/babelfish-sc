@@ -602,8 +602,6 @@ contract Masset is IMasset, IERC777Recipient, InitializableOwnable, Initializabl
 
     /**
      * @dev This should only be called once, immediately after the upgrade from 5.x to 6.0
-     * @param _newBasketManager       New basket manager
-     * @param _newRewardManager       New reward manager
      */
     function migrateToV6() public {
         
