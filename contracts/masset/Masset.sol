@@ -615,7 +615,7 @@ contract Masset is IMasset, IERC777Recipient, InitializableOwnable, Initializabl
         version = "6.0";
         bonusManager = IBonusManager(0);
 
-        setBasketManager(0x05603F4859cDBE9EbD72ff12AD6183651858AaB3);
-        setRewardManager(0x7535e61FC42392C578D90268358b94649f9B4193);
+        basketManager = IBasketManager(0x05603F4859cDBE9EbD72ff12AD6183651858AaB3);
+        rewardManager = IRewardManager(0x7535e61FC42392C578D90268358b94649f9B4193);
     }
 }
