@@ -21,7 +21,6 @@ contract("RewardManager", async (accounts) => {
   let masset: MassetInstance;
   let token: MockERC20Instance;
   let mockBasketManager: MockBasketManagerInstance;
-  const mockTokens = [];
 
   before("before all", async () => {
     masset = await Masset.new();
@@ -72,16 +71,16 @@ contract("RewardManager", async (accounts) => {
     describe('getAverageDsqrs', async () => {
       it('testcase', async () => {
         for (const testCase of testCases) {
-          //if (testCase.index != 16) continue;
-          //console.log(`testcase ${testCase.index}`);
+          // if (testCase.index != 16) continue;
+          // console.log(`testcase ${testCase.index}`);
           const { rewardManager, mockTokens } = await setTestCase(masset, token, testCase);
-          //await getTokenBalances(rewardManager);
-          //const totalBalance = await rewardManager.getTotalBalanceInMasset();
+          // await getTokenBalances(rewardManager);
+          // const totalBalance = await rewardManager.getTotalBalanceInMasset();
           const actualAmount = testCase.deposit ? floatToBn(testCase.amount) : floatToBn(-testCase.amount);
-          //console.log('totalBalance', totalBalance.toString(), 'actualAmount', actualAmount.toString());
+          // console.log('totalBalance', totalBalance.toString(), 'actualAmount', actualAmount.toString());
           const result: any = await rewardManager.getAverageDsqrs(mockTokens[testCase.tokenIndex], actualAmount);
-          //console.log(`testcase ${testCase.index} before:`, roundToN(toNumber(result[0]), 7), roundToN(testCase.result.dsqrBefore, 7));
-          //console.log(`testcase ${testCase.index} after:`, roundToN(toNumber(result[1]), 7), roundToN(testCase.result.dsqrAfter, 7));
+          // console.log(`testcase ${testCase.index} before:`, roundToN(toNumber(result[0]), 7), roundToN(testCase.result.dsqrBefore, 7));
+          // console.log(`testcase ${testCase.index} after:`, roundToN(toNumber(result[1]), 7), roundToN(testCase.result.dsqrAfter, 7));
           expect(roundToN(toNumber(result.dsqrBefore), 7)).to.eq(roundToN(testCase.result.dsqrBefore, 7));
           expect(roundToN(toNumber(result.dsqrAfter), 7)).to.eq(roundToN(testCase.result.dsqrAfter, 7));
         }
@@ -105,7 +104,7 @@ contract("RewardManager", async (accounts) => {
         const result = await rewardManager.getRewardForDeposit(mockTokens[testCase.tokenIndex], floatToBn(testCase.amount), false);
         const value = roundToN(toNumber(result), 7);
         const expected = roundToN(testCase.result.reward, 7);
-        //console.log(`testcase ${testCase.index}: value: ${value}, expected: ${expected}`);
+        // console.log(`testcase ${testCase.index}: value: ${value}, expected: ${expected}`);
         expect(value).to.eq(expected);
       }
     });
@@ -114,15 +113,15 @@ contract("RewardManager", async (accounts) => {
       expect(rewardTestcases.length).greaterThanOrEqual(1);
       for (const testCase of rewardTestcases) {
         const { rewardManager, mockTokens } = await setTestCaseBridgeMode(masset, token, testCase);
-        //await getTokenBalances(rewardManager);
+        // await getTokenBalances(rewardManager);
         const totalBalance = await rewardManager.getTotalBalanceInMasset();
         const actualAmount = testCase.deposit ? floatToBn(testCase.amount) : floatToBn(-testCase.amount);
-        //console.log('totalBalance', totalBalance.toString(), 'actualAmount', actualAmount.toString());
+        // console.log('totalBalance', totalBalance.toString(), 'actualAmount', actualAmount.toString());
 
         const result = await rewardManager.getRewardForDeposit(mockTokens[testCase.tokenIndex], floatToBn(testCase.amount), true);
         const value = roundToN(toNumber(result), 7);
         const expected = roundToN(testCase.result.reward, 7);
-        //console.log(`testcase ${testCase.index}: value: ${value}, expected: ${expected}`);
+        // console.log(`testcase ${testCase.index}: value: ${value}, expected: ${expected}`);
         expect(value).to.eq(expected);
       }
     });
@@ -177,7 +176,7 @@ async function setTestCaseBridgeMode(masset: MassetInstance, token: MockERC20Ins
   await masset.setRewardManager(rewardManager.address);
   for (let i = 0; i < testCase.initialBalances.length; i++) {
     let tokenBalance = new BN(testCase.initialBalances[i]);
-    if (i == testCase.tokenIndex) tokenBalance = tokenBalance.add(new BN(testCase.amount));
+    if (i === testCase.tokenIndex) tokenBalance = tokenBalance.add(new BN(testCase.amount));
     const mockToken = await MockERC20.new('', '', 18, masset.address, tokenBalance);
     mockTokens[i] = mockToken.address;
   }
@@ -201,7 +200,7 @@ async function getTokenBalances(rewardManager: RewardManagerInstance) {
 }
 
 function roundToN(v, n) {
-  return Math.round(v * Math.pow(10, n)) / Math.pow(10, n);
+  return Math.round(v * (10 ** n)) / (10 ** n);
 }
 
 class TestCase {

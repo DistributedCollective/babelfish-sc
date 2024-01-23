@@ -602,27 +602,20 @@ contract Masset is IMasset, IERC777Recipient, InitializableOwnable, Initializabl
 
     /**
      * @dev This should only be called once, immediately after the upgrade from 5.x to 6.0
-     * @param _newBasketManager       New basket manager
-     * @param _newRewardManager       New reward manager
      */
-    function migrateToV6(address _newBasketManager, address _newRewardManager) public onlyOwner {
+    function migrateToV6() public {
         
         // make sure we have the correct version here
-        require(compareStrings(version, "5.0") ||
+        require(
+            compareStrings(version, "4.0") ||
+            compareStrings(version, "5.0") ||
             compareStrings(version, "5.1") ||
             compareStrings(version, "5.2"), "wrong version");
 
         version = "6.0";
         bonusManager = IBonusManager(0);
 
-        require(Address.isContract(_newBasketManager), "_newBasketManager not a contract");
-        IBasketManager newBasketManager = IBasketManager(_newBasketManager);
-        require(compareStrings(newBasketManager.getVersion(), "5.0"), "wrong version basket manager");
-        setBasketManager(_newBasketManager);
-
-        require(Address.isContract(_newRewardManager), "_newRewardManager not a contract");
-        IRewardManager newRewardManager = IRewardManager(_newRewardManager);
-        require(compareStrings(newRewardManager.getVersion(), "3.0"), "wrong version reward manager");
-        setRewardManager(_newRewardManager);
+        setBasketManager(0x05603F4859cDBE9EbD72ff12AD6183651858AaB3);
+        setRewardManager(0x7535e61FC42392C578D90268358b94649f9B4193);
     }
 }
