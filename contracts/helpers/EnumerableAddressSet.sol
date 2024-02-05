@@ -85,11 +85,7 @@ library EnumerableAddressSet {
      * {get} instead in these cases.
      */
     function enumerate(AddressSet storage set) internal view returns (address[] memory) {
-        address[] memory output = new address[](set.values.length);
-        for (uint256 i; i < set.values.length; i++) {
-            output[i] = set.values[i];
-        }
-        return output;
+        return set.values;
     }
 
     /**

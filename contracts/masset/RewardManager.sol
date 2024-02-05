@@ -43,6 +43,7 @@ contract RewardManager is IRewardManager, Ownable {
 
     /** External methods **/
 
+/*
     /// @notice Constructor Creates a new RewardManager with a given Masset and initializes it with the current RewardManager params
     /// @param _massetAddress current masset
     /// @param _copyCurrentParams whether to copy the params from the existing RM
@@ -58,6 +59,10 @@ contract RewardManager is IRewardManager, Ownable {
             setGlobalMaxPenaltyPerc(previous.getGlobalMaxPenaltyPerc());
             setTargetWeights(previous.getTokens(), previous.getTargetWeights());
         }
+    }*/
+
+    function setMasset(address _massetAddress) public onlyOwner() {
+        masset = IMasset(_massetAddress);
     }
 
     /** Getters **/
@@ -230,7 +235,7 @@ contract RewardManager is IRewardManager, Ownable {
         for(uint i=0; i<tokens.length; i++) {
             address tokenAddress = tokens[i];
             uint256 balanceBefore = getBalanceInMasset(tokenAddress);
-            uint256 targetWeight = getTargetWeight(tokenAddress);
+            uint256 targetWeight = targetWeights[tokenAddress];
             uint256 weightBefore = getWeight(balanceBefore, totalBefore);
             uint256 balanceAfter = tokenAddress == _basset ? _addOrSub(balanceBefore, _sum) : balanceBefore;
             uint256 weightAfter = getWeight(balanceAfter, totalAfter);
@@ -263,7 +268,7 @@ contract RewardManager is IRewardManager, Ownable {
             if(tokenAddress == _basset) {
                 balanceBefore = balanceBefore.sub(_sum);
             }
-            uint256 targetWeight = getTargetWeight(tokenAddress);
+            uint256 targetWeight = targetWeights[tokenAddress];
             uint256 weightBefore = getWeight(balanceBefore, totalBefore);
             uint256 weightAfter = getWeight(balanceAfter, totalAfter);
             dsqrBefore = dsqrBefore.add(_dsqr(weightBefore, targetWeight));
@@ -283,7 +288,7 @@ contract RewardManager is IRewardManager, Ownable {
             uint256 _sum,
             bool _bridgeMode
         ) public view returns (bool) {
-        uint256 targetWeight = getTargetWeight(_bassetAddress);
+        uint256 targetWeight = targetWeights[_bassetAddress];
         uint256 balance = getBalanceInMasset(_bassetAddress);
         uint256 totalBalance = getTotalBalanceInMasset();
         if(!_bridgeMode) {
