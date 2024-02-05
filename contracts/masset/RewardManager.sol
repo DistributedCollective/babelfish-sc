@@ -60,10 +60,6 @@ contract RewardManager is IRewardManager, Ownable {
         }
     }
 
-    function setMasset(address _massetAddress) public onlyOwner() {
-        masset = IMasset(_massetAddress);
-    }
-
     /** Getters **/
 
     function getVersion() public pure returns (string memory) {
