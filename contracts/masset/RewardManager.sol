@@ -43,7 +43,6 @@ contract RewardManager is IRewardManager, Ownable {
 
     /** External methods **/
 
-/*
     /// @notice Constructor Creates a new RewardManager with a given Masset and initializes it with the current RewardManager params
     /// @param _massetAddress current masset
     /// @param _copyCurrentParams whether to copy the params from the existing RM
@@ -59,7 +58,7 @@ contract RewardManager is IRewardManager, Ownable {
             setGlobalMaxPenaltyPerc(previous.getGlobalMaxPenaltyPerc());
             setTargetWeights(previous.getTokens(), previous.getTargetWeights());
         }
-    }*/
+    }
 
     function setMasset(address _massetAddress) public onlyOwner() {
         masset = IMasset(_massetAddress);
