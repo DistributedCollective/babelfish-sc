@@ -7,11 +7,12 @@ import { IERC20 } from "../openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Address } from "../openzeppelin/contracts/utils/Address.sol";
 import { IRewardManager } from "./IRewardManager.sol";
 import { IMasset } from "./IMasset.sol";
-import { MappingAddressToUint256 } from "../helpers/MappingAddressToUint256.sol";
+import { EnumerableAddressSet } from "../helpers/EnumerableAddressSet.sol";
 
 /// @title A contract to manage rewards and penalties
 /// @author Derek Matter
 contract RewardManager is IRewardManager, Ownable {
+    using EnumerableAddressSet for EnumerableAddressSet.AddressSet; // enumerable map of addresses
 
     using SafeMath for uint256;
     uint256 constant ONE = 1000000000000000000;
@@ -21,7 +22,8 @@ contract RewardManager is IRewardManager, Ownable {
 
     IMasset private masset;
     uint256 private factor = 0;
-    MappingAddressToUint256 private targetWeights = new MappingAddressToUint256();
+    EnumerableAddressSet.AddressSet private tokensSet;
+    mapping(address => uint256) private targetWeights;
     uint256 globalMaxPenaltyPerc = 0;
     uint256 globalMaxRewardPerc = 0;
 
@@ -73,19 +75,24 @@ contract RewardManager is IRewardManager, Ownable {
     /// @notice Get the list of tokens
     /// @return tokens the tokens
     function getTokens() public view returns (address[] memory) {
-        return targetWeights.getKeys();
+        return tokensSet.enumerate();
     }
 
     /// @notice Get the target weight for a token
     /// @return targetWeight the target weight
     function getTargetWeight(address _tokenAddress) public view returns (uint256) {
-        return targetWeights.get(_tokenAddress);
+        return targetWeights[_tokenAddress];
     }
 
     /// @notice Get the target weights for all tokens
     /// @return targetWeights the target weights
     function getTargetWeights() public view returns (uint256[] memory) {
-        return targetWeights.getValues();
+        address[] memory keys = getTokens();
+        uint256[] memory r = new uint256[](keys.length);
+        for(uint i=0; i<r.length; i++) {
+            r[i] = getTargetWeight(keys[i]);
+        }
+        return r;
     }
 
     /// @notice Get the masset contract
@@ -139,13 +146,15 @@ contract RewardManager is IRewardManager, Ownable {
         uint256[] memory _targetWeights) public onlyOwner {
 
         require(_tokenAddresses.length == _targetWeights.length, "arrays not same length");
-        targetWeights = new MappingAddressToUint256();
+        
+        delete tokensSet;
         uint256 total = 0;
 
         for(uint i=0; i<_tokenAddresses.length; i++) {
             require(Address.isContract(_tokenAddresses[i]), "token address not a contract");
             total = total.add(_targetWeights[i]);
-            targetWeights.set(_tokenAddresses[i], _targetWeights[i]);
+            tokensSet.add(_tokenAddresses[i]);
+            targetWeights[_tokenAddresses[i]] = _targetWeights[i];
             emit onTargetWeightChanged(msg.sender, _tokenAddresses[i], _targetWeights[i]);
         }
         require(total == ONE, "total not one");
@@ -198,9 +207,9 @@ contract RewardManager is IRewardManager, Ownable {
     }
 
     function getTotalBalanceInMasset() public view returns(uint256 total) {
-        address[] memory bassets = targetWeights.getKeys();
-        for(uint i = 0; i < bassets.length; i++) {
-            total = total.add(getBalanceInMasset(bassets[i]));
+        address[] memory tokens = getTokens();
+        for(uint i = 0; i < tokens.length; i++) {
+            total = total.add(getBalanceInMasset(tokens[i]));
         }
     } 
 
@@ -216,12 +225,12 @@ contract RewardManager is IRewardManager, Ownable {
 
         uint256 totalBefore = getTotalBalanceInMasset();
         uint256 totalAfter = _addOrSub(totalBefore, _sum);
-        address[] memory tokens = targetWeights.getKeys();
+        address[] memory tokens = getTokens();
 
         for(uint i=0; i<tokens.length; i++) {
             address tokenAddress = tokens[i];
             uint256 balanceBefore = getBalanceInMasset(tokenAddress);
-            uint256 targetWeight = targetWeights.get(tokenAddress);
+            uint256 targetWeight = targetWeights[tokenAddress];
             uint256 weightBefore = getWeight(balanceBefore, totalBefore);
             uint256 balanceAfter = tokenAddress == _basset ? _addOrSub(balanceBefore, _sum) : balanceBefore;
             uint256 weightAfter = getWeight(balanceAfter, totalAfter);
@@ -245,7 +254,7 @@ contract RewardManager is IRewardManager, Ownable {
 
         uint256 totalAfter = getTotalBalanceInMasset();
         uint256 totalBefore = totalAfter.sub(_sum);
-        address[] memory tokens = targetWeights.getKeys();
+        address[] memory tokens = getTokens();
 
         for(uint i=0; i<tokens.length; i++) {
             address tokenAddress = tokens[i];
@@ -254,7 +263,7 @@ contract RewardManager is IRewardManager, Ownable {
             if(tokenAddress == _basset) {
                 balanceBefore = balanceBefore.sub(_sum);
             }
-            uint256 targetWeight = targetWeights.get(tokenAddress);
+            uint256 targetWeight = targetWeights[tokenAddress];
             uint256 weightBefore = getWeight(balanceBefore, totalBefore);
             uint256 weightAfter = getWeight(balanceAfter, totalAfter);
             dsqrBefore = dsqrBefore.add(_dsqr(weightBefore, targetWeight));
@@ -274,7 +283,7 @@ contract RewardManager is IRewardManager, Ownable {
             uint256 _sum,
             bool _bridgeMode
         ) public view returns (bool) {
-        uint256 targetWeight = targetWeights.get(_bassetAddress);
+        uint256 targetWeight = targetWeights[_bassetAddress];
         uint256 balance = getBalanceInMasset(_bassetAddress);
         uint256 totalBalance = getTotalBalanceInMasset();
         if(!_bridgeMode) {
@@ -299,7 +308,7 @@ contract RewardManager is IRewardManager, Ownable {
         require(_sum < 1000000000000 * ONE, "_sum is too big"); // prevent overflow when casting to signed
 
         // uninitialized! avoid division by zero
-        require(targetWeights.getKeys().length > 0, "no target weights");
+        require(getTokens().length > 0, "no target weights");
 
         if(!isDepositDeservesReward(_bassetAddress, _sum, _bridgeMode)) {
             return 0;
@@ -340,7 +349,7 @@ contract RewardManager is IRewardManager, Ownable {
         require(_sum < 1000000000000 * ONE, "_sum is too big"); // prevent overflow when casting to signed
 
         // uninitialized! avoid division by zero
-        require(targetWeights.getKeys().length > 0, "no target weights");
+        require(getTokens().length > 0, "no target weights");
 
         (uint256 dsqrBefore, uint256 dsqrAfter) = getAverageDsqrs(_bassetAddress, 0 - int256(_sum));
 
