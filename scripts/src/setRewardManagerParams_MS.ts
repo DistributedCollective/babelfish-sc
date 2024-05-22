@@ -2,22 +2,21 @@ import state from '../../migrations/state';
 import BN from "bn.js";
 import { RewardManagerInstance } from 'types/generated/RewardManager';
 import { knownTokens } from './knownTokens';
+import { MassetInstance } from 'types/generated';
 
 const ONE = new BN('1000000000000000000');
 
 const tokenTargetWeights = {
     rsk: {
-        'DAIES': 0.05,
-        'USDCES': 0.05,
-        'USDTES': 0.05,
-        'DAIBS': 0.05,
-        'USDCBS': 0.05,
-        'USDTBS': 0.15,
-        'BUSDBS': 0.05,
+        'DAIES': 0.06,
+        'USDCES': 0.06,
+        'USDTES': 0.09,
+        'DAIBS': 0.06,
+        'USDCBS': 0.065,
+        'USDTBS': 0.17,
         'RUSDT': 0.05,
-        'RDOC': 0.005,
         'DOC': 0.005,
-        'ZUSD': 0.49
+        'DLLR': 0.44
     }
 };
 
@@ -35,17 +34,24 @@ export default async function setParams(truffle): Promise<any> {
     const targetWeights = tokenTargetWeights[network];
     let tokenNames = Object.keys(targetWeights);
 
-    /*
+    const MultiSigWallet = artifacts.require("MultiSigWallet");
+    const multiSigWallet = await MultiSigWallet.at('0x37A706259F5201C03f6Cb556A960F30F86842d01');
+    const owners = await multiSigWallet.getOwners();
+    console.log('MS owners: ', owners);
+    const reqs = await multiSigWallet.required();
+    console.log('MS reqs: ', reqs.toString());
+
+
+
     const Masset = artifacts.require("Masset");
     const fake = await state.getDeployed(Masset, 'MassetProxy');
     const rewardManagerAddress = await (fake as MassetInstance).getRewardManager();
     console.log('rewardManagerAddress', rewardManagerAddress);
-    */
 
     const RewardManager = artifacts.require("RewardManager");
-    const rewardManager = await state.getDeployed(RewardManager, 'RewardManager');
+    //const rewardManager = await state.getDeployed(RewardManager, 'RewardManager');
+    const rewardManager = await RewardManager.at(rewardManagerAddress);
 
-    /*
     console.log('setting target weights: ');
     for(const token of tokenNames) {
         console.log('token ', token, '   weight: ', targetWeights[token].toString());
@@ -57,39 +63,50 @@ export default async function setParams(truffle): Promise<any> {
     tokenNames.forEach(tn => {
         const weight = new BN(1000000 * targetWeights[tn]).mul(new BN(1000000000000));
         total = total.add(weight);
-        weights.push(weight);
+        weights.push(weight.toString());
     });
     console.log('Total weights: ', total.toString());
 
-    await (rewardManager as RewardManagerInstance).setTargetWeights(addresses, weights);
-    */
+    //await (rewardManager as RewardManagerInstance).setTargetWeights(addresses, weights);
+    {
+        const abi = rewardManager.contract.methods['setTargetWeights(address[],uint256[])'](
+            addresses, 
+            weights
+        ).encodeABI();
+        console.log(`setTargetWeights([${addresses}], [${weights}])`);
+        console.log('Payload: ', abi);
+        const txid = await multiSigWallet.submitTransaction(rewardManagerAddress, 0, abi, { from:  provider.getAddress(1) });
+        console.log('txid: ', txid);
+    }
 
     console.log(`Send to ${rewardManager.address}`);
 
-    const maxReward = 25;
-    const maxPenalty = 100;
-    const TENTH = new BN('100000000000000000');
-    console.log('setting max incentives to: maxReward: ', maxReward, '    maxPenalty: ', maxPenalty);
-    //await (rewardManager as RewardManagerInstance).setGlobalMaxRewardPerc(TENTH.mul(new BN(maxReward)));
-    {
-        const abi = rewardManager.contract.methods['setGlobalMaxRewardPerc(uint256)'](TENTH.mul(new BN(maxReward)).toString()).encodeABI();
-        console.log(`setGlobalMaxRewardPerc(${TENTH.mul(new BN(maxReward)).toString()})`)
-        console.log('Payload: ', abi);
-    }
+    // const maxReward = 25;
+    // const maxPenalty = 100;
+    // const TENTH = new BN('100000000000000000');
+    // console.log('setting max incentives to: maxReward: ', maxReward, '    maxPenalty: ', maxPenalty);
+    // //await (rewardManager as RewardManagerInstance).setGlobalMaxRewardPerc(TENTH.mul(new BN(maxReward)));
+    // {
+    //     const abi = rewardManager.contract.methods['setGlobalMaxRewardPerc(uint256)'](TENTH.mul(new BN(maxReward)).toString()).encodeABI();
+    //     console.log(`setGlobalMaxRewardPerc(${TENTH.mul(new BN(maxReward)).toString()})`)
+    //     console.log('Payload: ', abi);
+    // }
 
-    //await (rewardManager as RewardManagerInstance).setGlobalMaxPenaltyPerc(TENTH.mul(new BN(maxPenalty)));
-    {
-        const abi = rewardManager.contract.methods['setGlobalMaxPenaltyPerc(uint256)'](TENTH.mul(new BN(maxPenalty)).toString()).encodeABI();
-        console.log(`setGlobalMaxPenaltyPerc(${TENTH.mul(new BN(maxPenalty)).toString()})`)
-        console.log('Payload: ', abi);
-    }
+    // //await (rewardManager as RewardManagerInstance).setGlobalMaxPenaltyPerc(TENTH.mul(new BN(maxPenalty)));
+    // {
+    //     const abi = rewardManager.contract.methods['setGlobalMaxPenaltyPerc(uint256)'](TENTH.mul(new BN(maxPenalty)).toString()).encodeABI();
+    //     console.log(`setGlobalMaxPenaltyPerc(${TENTH.mul(new BN(maxPenalty)).toString()})`)
+    //     console.log('Payload: ', abi);
+    // }
 
-    const factor = 2000000;
+    const factor = 2500000;
     console.log('setting factor to: ', factor);
     //await (rewardManager as RewardManagerInstance).setFactor(ONE.mul(new BN(factor)));
     {
         const abi = rewardManager.contract.methods['setFactor(uint256)'](ONE.mul(new BN(factor)).toString()).encodeABI();
         console.log(`setFactor(${ONE.mul(new BN(factor)).toString()})`)
         console.log('Payload: ', abi);
+        const txid = await multiSigWallet.submitTransaction(rewardManagerAddress, 0, abi, { from:  provider.getAddress(1) });
+        console.log('txid: ', txid);
     }
 }

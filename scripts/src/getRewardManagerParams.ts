@@ -33,8 +33,8 @@ export default async function getParams(truffle): Promise<any> {
     const Masset = artifacts.require("Masset");
     const fake = await state.getDeployed(Masset, 'MassetProxy');
     const tokenNames = knownTokensAddressToName[network];
-    //const rewardManagerAddress = await (fake as MassetInstance).getRewardManager();
-    const rewardManagerAddress = '0xdfE234575c04F8Ad29Bea2c1546799e677022021';
+    const rewardManagerAddress = await (fake as MassetInstance).getRewardManager();
+    //const rewardManagerAddress = '0xdfE234575c04F8Ad29Bea2c1546799e677022021';
     console.log('Current reward manager: ', rewardManagerAddress);
     
     const massetOwner = await fake.owner();
@@ -52,7 +52,7 @@ export default async function getParams(truffle): Promise<any> {
 
     const rmTokens = await (rewardManager as RewardManagerInstance).getTokens();
 
-    const totalBalance = await (basketManager as BasketManagerInstance).getTotalBalanceInMasset(fake.address);
+    const totalBalance = await (rewardManager as RewardManagerInstance).getTotalBalanceInMasset();
     console.log('totalBalance: ', bnToNumber(totalBalance));
     console.log();
 
@@ -60,7 +60,7 @@ export default async function getParams(truffle): Promise<any> {
         //if (!tokenNames[token]) continue;
 
         console.log('token: ', token, '   ', tokenNames[token.toLowerCase()]);
-        const balance = await (basketManager as BasketManagerInstance).getBalanceInMasset(fake.address, token);
+        const balance = await (rewardManager as RewardManagerInstance).getBalanceInMasset(token);
         const targetWeight = await (rewardManager as RewardManagerInstance).getTargetWeight(token);
         console.log(
             'balance: ', bnToNumber(balance),

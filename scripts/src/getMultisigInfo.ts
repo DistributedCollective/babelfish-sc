@@ -14,16 +14,18 @@ export default async function getMultisigInfo(truffle): Promise<any> {
     console.log(provider.getAddress(0), provider.getAddress(1));
 
     const MultiSigWallet = artifacts.require("MultiSigWallet");
-    let ms = await MultiSigWallet.at('0xbD687d470A7E8B36C666968bb79376904725E4DD');
+    let ms = await MultiSigWallet.at('0xB64322e10b5aE1BE121B8Bb0dead560c53d9Dbc3');
 
-    const abi1 = ms.contract.methods['changeRequirement(uint256)'](2).encodeABI();
-    console.log(`Send to ${ms.address},    ABI: ${abi1}`);
+    // const abi1 = ms.contract.methods['changeRequirement(uint256)'](2).encodeABI();
+    // console.log(`Send to ${ms.address},    ABI: ${abi1}`);
 
     const owners = await (ms as MultiSigWalletInstance).getOwners();
     console.log('owners: ', owners);
 
     const required = await (ms as MultiSigWalletInstance).required();
     console.log('required: ', required.toNumber());
+
+    /*
 
     const count = await (ms as MultiSigWalletInstance).getTransactionCount(true, true);
     const ids = (await (ms as MultiSigWalletInstance).getTransactionIds(32, 36, true, true)).map(id => id.toString());
@@ -32,4 +34,11 @@ export default async function getMultisigInfo(truffle): Promise<any> {
         const t = await (ms as MultiSigWalletInstance).getConfirmations(id);
         console.log(`id: ${id}, t: ${t}`);
     }
+    */
+
+    await (ms as MultiSigWalletInstance).confirmTransaction('150', { from: provider.getAddress(1) });
+
+
+
+
 }

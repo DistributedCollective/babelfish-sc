@@ -2,22 +2,21 @@ import state from '../../migrations/state';
 import BN from "bn.js";
 import { RewardManagerInstance } from 'types/generated/RewardManager';
 import { knownTokens } from './knownTokens';
+import { MassetInstance } from 'types/generated';
 
 const ONE = new BN('1000000000000000000');
 
 const tokenTargetWeights = {
     rsk: {
-        'DAIES': 0.05,
-        'USDCES': 0.05,
-        'USDTES': 0.05,
-        'DAIBS': 0.05,
-        'USDCBS': 0.05,
-        'USDTBS': 0.15,
-        'BUSDBS': 0.05,
+        'DAIES': 0.06,
+        'USDCES': 0.06,
+        'USDTES': 0.09,
+        'DAIBS': 0.06,
+        'USDCBS': 0.065,
+        'USDTBS': 0.17,
         'RUSDT': 0.05,
-        'RDOC': 0.005,
         'DOC': 0.005,
-        'DLLR': 0.49
+        'DLLR': 0.44
     },
     rskTestnet: {
         'SEPUSDES': 0.05,
@@ -47,16 +46,15 @@ export default async function setParams(truffle): Promise<any> {
     const targetWeights = tokenTargetWeights[network];
     let tokenNames = Object.keys(targetWeights);
 
-    /*
     const Masset = artifacts.require("Masset");
     const fake = await state.getDeployed(Masset, 'MassetProxy');
     const rewardManagerAddress = await (fake as MassetInstance).getRewardManager();
     console.log('rewardManagerAddress', rewardManagerAddress);
-    */
 
     const RewardManager = artifacts.require("RewardManager");
     //const rewardManager = await state.getDeployed(RewardManager, 'RewardManager');
-    const rewardManager = await RewardManager.at('0xdfE234575c04F8Ad29Bea2c1546799e677022021');
+    //const rewardManager = await RewardManager.at('0xdfE234575c04F8Ad29Bea2c1546799e677022021');
+    const rewardManager = await RewardManager.at(rewardManagerAddress);
 
     if (network == 'rskTestnet') {
 
@@ -104,11 +102,11 @@ export default async function setParams(truffle): Promise<any> {
             weights.push(weight);
         });
         console.log('Total weights: ', total.toString());
-        //await (rewardManager as RewardManagerInstance).setTargetWeights(addresses, weights);
+        await (rewardManager as RewardManagerInstance).setTargetWeights(addresses, weights);
 
-        const factor = 2000000;
+        const factor = 2500000;
         console.log('setting factor to: ', factor);
-        //await (rewardManager as RewardManagerInstance).setFactor(ONE.mul(new BN(factor)));
+        await (rewardManager as RewardManagerInstance).setFactor(ONE.mul(new BN(factor)));
 
         const maxReward = 25;
         const maxPenalty = 100;
@@ -116,6 +114,6 @@ export default async function setParams(truffle): Promise<any> {
         console.log('setting max incentives to: maxReward: ', maxReward, '    maxPenalty: ', maxPenalty);
         //await (rewardManager as RewardManagerInstance).setGlobalMaxRewardPerc(TENTH.mul(new BN(maxReward)));
         console.log('*');
-        await (rewardManager as RewardManagerInstance).setGlobalMaxPenaltyPerc(TENTH.mul(new BN(maxPenalty)));
+        //await (rewardManager as RewardManagerInstance).setGlobalMaxPenaltyPerc(TENTH.mul(new BN(maxPenalty)));
     }
 }
