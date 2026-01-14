@@ -16,7 +16,7 @@ const tokens = {
     'USDCbs': '0x91eDceE9567cD5612C9DeDeAAe24D5e574820Af1',
     'USDTbs': '0xFf4299bcA0313c20A61dC5Ed597739743bEf3f6D',
     'BUSDbs': '0x61e9604E31a736129D7f5c58964C75935b2D80d6',
-    'RUSDT': '0xef213441A85dF4d7ACbDaE0Cf78004e1E486bB96',
+    'USDT0': '0x779Ded0c9e1022225f8E0630b35a9b54bE713736',
     'rDOC': '0x2d919F19D4892381D58edeBeca66D5642Cef1a1f',
     'DOC': '0xe700691dA7b9851F2F35f8b8182c69c53CcaD9Db',
     'ZUSD': '0xdB107FA69E33f05180a4C2cE9c2E7CB481645C2d'
@@ -30,7 +30,7 @@ const tokenTargetWeights = {
     'USDCbs': 0.05,
     'USDTbs': 0.15,
     'BUSDbs': 0.05,
-    'RUSDT': 0.05,
+    'USDT0': 0.05,
     'rDOC': 0.005,
     'DOC': 0.005,
     'ZUSD': 0.49
@@ -44,7 +44,7 @@ const tokenBalances = {
     'USDCbs': 0,
     'USDTbs': 0,
     'BUSDbs': 0,
-    'RUSDT': 0,
+    'USDT0': 0,
     'rDOC': 0,
     'DOC': 0,
     'ZUSD': 3924696

@@ -14,7 +14,7 @@ const tokenTargetWeights = {
         'USDCBS': 0.05,
         'USDTBS': 0.15,
         'BUSDBS': 0.05,
-        'RUSDT': 0.05,
+        'USDT0': 0.05,
         'RDOC': 0.005,
         'DOC': 0.005,
         'DLLR': 0.49
@@ -23,7 +23,7 @@ const tokenTargetWeights = {
         'SEPUSDES': 0.05,
         'tDOC': .005,
         'tRDOC': .005,
-        'trUSDT': .05,
+        'tUSDT0': .05,
         'DLLR': .20,
         'TST1': .05,
         'TST2': .05,

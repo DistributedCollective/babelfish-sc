@@ -40,7 +40,7 @@ export default {
             '0x61e9604e31a736129d7f5c58964c75935b2d80d6', // BUSDbs
 
             // non bridge
-            '0xef213441a85df4d7acbdae0cf78004e1e486bb96' // RUSDT
+            '0x779Ded0c9e1022225f8E0630b35a9b54bE713736' // USDT0
         ],
         bridges: [
             // ETH->RSK
